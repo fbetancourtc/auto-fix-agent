@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A centralized self-healing CI/CD system that monitors all Liftit and Lavandarosa repos for CI failures and production errors, auto-diagnoses bugs using Claude Code Action, implements fixes, and promotes them through develop → qa → main with human approval gates. Serves 14+ active repos across 3 GitHub organizations.
+A centralized self-healing CI/CD system that monitors repos across 3 GitHub organizations for CI failures, auto-diagnoses bugs using Claude Code Action, implements source-code-only fixes, and opens PRs with human approval gates. Shipped v1.0 MVP with full fix loop validated on TypeScript repos.
 
 ## Core Value
 
@@ -12,100 +12,72 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Reusable GitHub Actions workflow callable cross-org via thin 15-line caller — v1.0
+- ✓ Stack-specific prompt library (TypeScript production, Python/Kotlin stubs) — v1.0
+- ✓ CI failure auto-detection via `workflow_run` trigger with flakiness filter — v1.0
+- ✓ Agent reads CI failure logs (last 500 lines, sanitized) and identifies root cause — v1.0
+- ✓ Agent implements fix within allowed source directories only — v1.0
+- ✓ Post-agent diff validation reverts any forbidden file modifications — v1.0
+- ✓ Auto-created fix PR with `auto-fix` label and structured description — v1.0
+- ✓ 2-attempt retry guard with `needs-human` escalation — v1.0
+- ✓ Human review gate enforced architecturally (no auto-merge) — v1.0
+- ✓ Input sanitization for CI logs (prompt injection, shell injection, secrets) — v1.0
+- ✓ Circuit breaker prevents self-triggering on auto-fix PR failures — v1.0
+- ✓ Per-run token/time limits (`--max-turns 10`, `timeout-minutes: 15`) — v1.0
+- ✓ Agent isolated from production secrets and deployment triggers — v1.0
 
 ### Active
 
-- [ ] Reusable GitHub Actions workflow that any repo can call with a 15-line caller
-- [ ] CI failure auto-detection via `workflow_run` trigger on failed builds
-- [ ] Agent reads CI failure logs and identifies root cause
-- [ ] Agent searches codebase, implements fix, and runs tests in the runner
-- [ ] Agent opens PR targeting the failed branch with fix description
-- [ ] `@claude` mention in PR comments triggers interactive code review/fixes
-- [ ] Sentry webhook integration for production error detection (Python + JS)
-- [ ] Firebase Crashlytics integration for Android crash detection
-- [ ] `repository_dispatch` event bridge for external error sources
-- [ ] Stack-specific prompt configs (TypeScript, Python, Kotlin/monorepo)
-- [ ] PR promotion pipeline: auto-create develop → qa PR after fix merges
-- [ ] Human approval gate for qa → main promotion (non-negotiable)
-- [ ] Max 2 retry limit per failure — escalate to human on exhaustion
-- [ ] All auto-fix PRs labeled `auto-fix` for filtering and tracking
-- [ ] Agent scope restricted to source code only (no CI config, no secrets)
-- [ ] Success rate tracking and monitoring dashboard
+- [ ] Python stack-specific fix prompt (FastAPI/pytest/ruff expansion)
+- [ ] Kotlin stack-specific fix prompt (Android/ktlint/detekt/Gradle expansion)
+- [ ] Thin caller template with onboarding docs for new repos
+- [ ] All 14 repos enrolled with working auto-fix
+- [ ] `@claude` interactive code review via PR comments
+- [ ] Auto-create develop → qa PR when fix PR merges
+- [ ] Human approval gate for qa → main promotion
+- [ ] Success rate tracking per repo
+- [ ] Cost-per-fix tracking via token usage output
+- [ ] Budget alerts at 50%/80% of $200/month threshold
 
 ### Out of Scope
 
-- Full autonomous deployment to production — always requires human merge to main
-- Modifying CI/CD configuration files (`.github/workflows/`) — agent only fixes source code
-- Cross-repo error correlation or ML-based pattern detection — v2+
+- Auto-merge of fix PRs — LLM code requires human approval
+- Modifying CI configuration files — agent fixes source code only
+- Cross-repo error correlation / ML — architecturally complex at this scale
 - Custom LLM fine-tuning — uses Claude API directly
-- Infrastructure provisioning (Terraform, Pulumi) — separate concern
-- Automated rollback of production deployments — separate tooling
+- Infrastructure fixes (Terraform) — production blast radius
+- Automated rollback — requires context agent doesn't have
+- Slack/Teams notifications — GitHub PR notifications suffice
 
 ## Context
 
-### Repository Portfolio (14 active repos, 3 orgs)
-
-**Liftitapp Org:**
-- `liftit-control-de-asistencia` — Kotlin + Python + TypeScript monorepo (attendance control)
-- `averias-marketplace` — TypeScript
-- `geocoding-enterprise` — TypeScript (geocoding API)
-- `conciliacion-recaudo-liftit` — Python (cash reconciliation)
-- `liftit-ai-system` — TypeScript (AI logistics)
-- `geocoding-liftit-api` — Python (geocoding service)
-- `liftit-cargo-receptor-de-cumplidos` — Python (POD processing)
-
-**Personal (fbetancourtc):**
-- `laundry-operating-dash` — TypeScript (laundry management)
-- `lavandarosa-platform` — TypeScript
-- `lavandarosa-petal-web` — TypeScript
-- `laundry-property-managers` — TypeScript
-- `laundry-cleaning-staff` — TypeScript
-- `laundry-admin-dash` — TypeScript
-- `binance-bot` — Python (trading bot)
-
-**LiftitFinOps:**
-- `conciliacion-averias` — Python (claims reconciliation)
-
-### Stack Distribution
-- TypeScript: 10 repos (71%)
-- Python: 4 repos (29%)
-- Kotlin + Python + TypeScript: 1 monorepo
-- All repos use GitHub Actions for CI
-- Branch strategy: develop → qa → main (most repos)
-
-### Key Tools Validated (from prior research)
-1. **Claude Code Action** (`anthropics/claude-code-action@v1`) — GA, official GitHub Marketplace
-2. **Claude CLI headless mode** — `claude -p "prompt" --allowedTools Bash,Read,Edit --output-format json`
-3. **Sentry Seer** — built-in AI that auto-creates fix PRs from production errors
-4. **GitHub `workflow_run` trigger** — reacts to failed CI runs
-5. **GitHub `repository_dispatch`** — external systems trigger workflows
-
-### Current CI/CD State (liftit-control-de-asistencia as reference)
-- Backend CI: pytest (95% coverage threshold), ruff linting, mypy type checking
-- Dashboard CI: vitest (90% coverage threshold), ESLint, TypeScript checks
-- Android CI: JUnit + Robolectric, ktlint, detekt, JaCoCo coverage
-- No error monitoring (Sentry/Crashlytics) configured on any repo yet
-
-## Constraints
-
-- **API Cost**: Anthropic API usage per auto-fix run (~$0.50-5.00 per fix) — budget ~$200/month
-- **GitHub Actions**: Reusable workflows require the caller repo to grant `contents: write` and `pull-requests: write` permissions
-- **Cross-org workflows**: GitHub reusable workflows can be called cross-org only if the central repo is public or the orgs share enterprise billing
-- **Sentry plans**: Free tier limited — Team plan ($26/mo) needed for webhook integrations
-- **Security**: Agent must NEVER have access to production secrets, deployment triggers, or CI config modification
-- **Rate limits**: GitHub API rate limits (5000 req/hr authenticated) and Anthropic API rate limits
+Shipped v1.0 MVP with 1,381 LOC across YAML, Shell, JSON, and Markdown.
+Tech stack: GitHub Actions, Claude Code Action, Bash scripts, JSON config.
+GitHub App (ID: 2985828) installed on fbetancourtc and LiftitFinOps; Liftitapp pending admin.
+14 active repos across 3 orgs (10 TypeScript, 4 Python, 1 Kotlin monorepo).
+Audit found 4 non-critical tech debt items — all mitigated.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Hybrid architecture (central + per-repo callers) | 14 repos across 3 orgs — centralized prompts with thin per-repo callers prevents maintenance burden | — Pending |
-| Claude Code Action over SWE-agent/OpenHands | Already using Claude ecosystem, GA official action, simpler integration | — Pending |
-| Sentry over Crashlytics for backend/dashboard | Native webhook support, Seer AI integration, unified platform for Python + JS | — Pending |
-| Human gate at qa → main | Non-negotiable safety requirement — agent never auto-deploys to production | — Pending |
-| Max 2 retries per failure | Prevents infinite loops and runaway API costs | — Pending |
-| Start per-repo (validate) → extract to central | Learn what works before abstracting — avoid premature optimization | — Pending |
+| Hybrid architecture (central + per-repo callers) | 14 repos across 3 orgs — centralized prompts with thin per-repo callers | ✓ Good — clean separation of concerns |
+| Claude Code Action over SWE-agent/OpenHands | Already using Claude ecosystem, GA official action | ✓ Good — simple integration |
+| Public central repo for cross-org access | Required for free cross-org reusable workflow access | ✓ Good — avoids enterprise billing |
+| Human gate at qa → main | Non-negotiable safety requirement | ✓ Good — enforced architecturally |
+| Max 2 retries per failure | Prevents infinite loops and runaway API costs | ✓ Good — with closed-PR tracking |
+| Start per-repo (validate) → extract to central | Learn what works before abstracting | ✓ Good — validated pattern in Phase 2 |
+| Post-agent validation pattern | Agent pushes freely, workflow validates after | ✓ Good — simpler than pre-validation |
+| Circuit breaker fails open | Transient API failures shouldn't block fixes | ⚠️ Revisit — monitor false positive rate |
+| Retry guard counts repo-wide | Simpler than per-run tracking | ⚠️ Revisit — premature escalation risk |
+
+## Constraints
+
+- **API Cost**: ~$0.50-5.00 per fix run — budget ~$200/month
+- **GitHub Actions**: Caller repos need `contents: write` and `pull-requests: write`
+- **Cross-org**: Central repo must be public (or enterprise billing required)
+- **Security**: Agent NEVER has production secrets or deployment triggers
+- **Rate limits**: GitHub API (5000 req/hr) and Anthropic API limits
 
 ---
-*Last updated: 2026-03-01 after initialization*
+*Last updated: 2026-03-02 after v1.0 milestone*
