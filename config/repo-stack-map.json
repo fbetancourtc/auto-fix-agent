@@ -1,17 +1,33 @@
 {
-  "Liftitapp/liftit-control-de-asistencia": "kotlin",
-  "Liftitapp/averias-marketplace": "typescript",
-  "Liftitapp/geocoding-enterprise": "typescript",
-  "Liftitapp/conciliacion-recaudo-liftit": "python",
-  "Liftitapp/liftit-ai-system": "typescript",
-  "Liftitapp/geocoding-liftit-api": "python",
-  "Liftitapp/liftit-cargo-receptor-de-cumplidos": "python",
-  "fbetancourtc/laundry-operating-dash": "typescript",
-  "fbetancourtc/lavandarosa-platform": "typescript",
-  "fbetancourtc/lavandarosa-petal-web": "typescript",
-  "fbetancourtc/laundry-property-managers": "typescript",
-  "fbetancourtc/laundry-cleaning-staff": "typescript",
-  "fbetancourtc/laundry-admin-dash": "typescript",
-  "fbetancourtc/binance-bot": "python",
-  "LiftitFinOps/conciliacion-averias": "python"
+  "defaults": {
+    "typescript": {
+      "allowed_dirs": ["src/", "app/", "components/", "lib/", "utils/", "hooks/", "types/", "tests/", "__tests__/"]
+    },
+    "python": {
+      "allowed_dirs": ["src/", "app/", "lib/", "tests/"]
+    },
+    "kotlin": {
+      "allowed_dirs": ["app/src/"]
+    }
+  },
+  "repos": {
+    "Liftitapp/liftit-control-de-asistencia": {
+      "stack": "kotlin",
+      "allowed_dirs": ["app/src/", "dashboard/src/", "backend/src/"]
+    },
+    "Liftitapp/averias-marketplace": { "stack": "typescript" },
+    "Liftitapp/geocoding-enterprise": { "stack": "typescript" },
+    "Liftitapp/conciliacion-recaudo-liftit": { "stack": "python" },
+    "Liftitapp/liftit-ai-system": { "stack": "typescript" },
+    "Liftitapp/geocoding-liftit-api": { "stack": "python" },
+    "Liftitapp/liftit-cargo-receptor-de-cumplidos": { "stack": "python" },
+    "fbetancourtc/laundry-operating-dash": { "stack": "typescript" },
+    "fbetancourtc/lavandarosa-platform": { "stack": "typescript" },
+    "fbetancourtc/lavandarosa-petal-web": { "stack": "typescript" },
+    "fbetancourtc/laundry-property-managers": { "stack": "typescript" },
+    "fbetancourtc/laundry-cleaning-staff": { "stack": "typescript" },
+    "fbetancourtc/laundry-admin-dash": { "stack": "typescript" },
+    "fbetancourtc/binance-bot": { "stack": "python" },
+    "LiftitFinOps/conciliacion-averias": { "stack": "python" }
+  }
 }
