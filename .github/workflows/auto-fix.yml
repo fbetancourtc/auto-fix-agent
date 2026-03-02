@@ -15,6 +15,10 @@ on:
         required: true
         type: string
         description: "Full repo name (owner/repo) where CI failed"
+      head_branch:
+        required: true
+        type: string
+        description: "Branch where CI failed (from github.event.workflow_run.head_branch)"
     secrets:
       anthropic_api_key:
         required: true
@@ -55,6 +59,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repository }}
+          ref: ${{ inputs.head_branch }}
           token: ${{ steps.app-token.outputs.token }}
 
       # 4. Circuit breaker (SECR-02)
@@ -109,10 +114,51 @@ jobs:
             core.setOutput('should_proceed', 'true');
             core.info('Circuit breaker: CLEAR — proceeding with fix');
 
-      # 5. Retrieve and sanitize failed CI logs (SECR-01)
+      # 5. Flakiness filter (CIFD-03)
+      # Re-runs failed jobs once. If the re-run passes, skips the agent.
+      # Polls without a hard cap -- GitHub's own job timeout-minutes is the limit.
+      - name: Flakiness filter
+        id: flaky
+        if: steps.circuit.outputs.should_proceed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const [owner, repoName] = '${{ inputs.repository }}'.split('/');
+            const runId = parseInt('${{ inputs.failed_run_id }}');
+
+            // Re-run only failed jobs (mutates the existing run -- same run_id)
+            await github.rest.actions.reRunWorkflowFailedJobs({
+              owner, repo: repoName, run_id: runId
+            });
+            core.info(`Re-running failed jobs for run ${runId}`);
+
+            // Poll until completion (15s intervals)
+            // No extra hard cap -- GitHub's own job timeout-minutes is the cap
+            // (user decision: "Wait up to the job's own timeout-minutes setting -- no extra hard cap")
+            let conclusion = null;
+            while (!conclusion) {
+              await new Promise(r => setTimeout(r, 15000));
+              const { data: run } = await github.rest.actions.getWorkflowRun({
+                owner, repo: repoName, run_id: runId
+              });
+              if (run.status === 'completed') {
+                conclusion = run.conclusion;
+              }
+            }
+
+            if (conclusion === 'success') {
+              core.notice('Flaky failure detected -- passed on re-run, agent skipped');
+              core.setOutput('is_flaky', 'true');
+            } else {
+              core.info(`Re-run concluded: ${conclusion}`);
+              core.setOutput('is_flaky', 'false');
+            }
+
+      # 6. Retrieve and sanitize failed CI logs (SECR-01)
       # Uses env indirection (NOT inline ${{ }}) for untrusted content safety.
       - name: Get and sanitize failed logs
-        if: steps.circuit.outputs.should_proceed == 'true'
+        if: steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           RUN_ID: ${{ inputs.failed_run_id }}
@@ -123,10 +169,10 @@ jobs:
             || echo "No logs available" > /tmp/raw-ci-logs.txt
           bash _auto-fix-scripts/scripts/sanitize-logs.sh /tmp/raw-ci-logs.txt /tmp/ci-logs.txt
 
-      # 6. Load stack-specific prompt
+      # 7. Load stack-specific prompt
       - name: Load prompt
         id: prompt
-        if: steps.circuit.outputs.should_proceed == 'true'
+        if: steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
         env:
           TARGET_REPO: ${{ inputs.repository }}
         run: |
@@ -154,13 +200,13 @@ jobs:
 
           echo "stack=$STACK" >> "$GITHUB_OUTPUT"
 
-      # 7. Run Claude Code Action (SECR-03 + SECR-04)
+      # 8. Run Claude Code Action (SECR-03 + SECR-04)
       # - --max-turns 10: soft cap on agent exchanges
       # - timeout-minutes 15 on job: hard cap
       # - --allowedTools: restricts to safe file and test operations
       # - No env block: agent has NO access to tokens or secrets
       - name: Run Claude Code Action
-        if: steps.circuit.outputs.should_proceed == 'true'
+        if: steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
