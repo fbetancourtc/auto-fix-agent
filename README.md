@@ -27,6 +27,10 @@ When a CI workflow fails on any enrolled repo, the auto-fix agent analyzes the f
 3. **Variable** stored in each organization:
    - `AUTO_FIX_APP_ID` -- Numeric GitHub App ID
 
+4. **Labels** created in each enrolled repository:
+   - `auto-fix` -- applied to auto-generated fix PRs (used by retry guard)
+   - `needs-human` -- applied to escalation issues when auto-fix fails after 2 attempts
+
 ### Adding the Caller Workflow to a Repo
 
 Add this file to any enrolled repo at `.github/workflows/auto-fix-caller.yml`:
@@ -37,18 +41,16 @@ on:
   workflow_run:
     workflows: ["CI"]  # Must match the repo's CI workflow name
     types: [completed]
-
 jobs:
-  auto-fix:
+  fix:
     if: github.event.workflow_run.conclusion == 'failure'
     uses: fbetancourtc/auto-fix-agent/.github/workflows/auto-fix.yml@main
-    secrets:
-      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-      app_private_key: ${{ secrets.AUTO_FIX_APP_PRIVATE_KEY }}
     with:
-      app_id: ${{ vars.AUTO_FIX_APP_ID }}
-      failed_run_id: ${{ github.event.workflow_run.id }}
-      repository: ${{ github.repository }}
+      app_id: "${{ vars.AUTO_FIX_APP_ID }}"
+      failed_run_id: "${{ github.event.workflow_run.id }}"
+      repository: "${{ github.repository }}"
+      head_branch: "${{ github.event.workflow_run.head_branch }}"
+    secrets: { anthropic_api_key: "${{ secrets.ANTHROPIC_API_KEY }}", app_private_key: "${{ secrets.AUTO_FIX_APP_PRIVATE_KEY }}" }
 ```
 
 ## Enrolled Repositories

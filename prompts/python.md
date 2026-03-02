@@ -25,7 +25,7 @@ The project typically uses:
 
 ## Constraints
 
-- ONLY modify files in: `app/`, `src/`, `tests/`, `lib/`, `services/`, `schemas/`, `api/`
+- ONLY modify files in: `src/`, `app/`, `lib/`, `tests/`
 - NEVER modify: `.github/`, `.env*`, `Dockerfile`, `docker-compose*`, `pyproject.toml` (unless adding a missing dependency), `requirements.txt` (unless adding a missing dependency)
 - NEVER delete tests -- fix the code to make tests pass
 - NEVER add `# type: ignore` -- fix the type issue properly
