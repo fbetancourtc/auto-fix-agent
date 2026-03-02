@@ -32,8 +32,6 @@ jobs:
 
     steps:
       # 1. Generate cross-org token
-      # The owner defaults to github.repository_owner which dynamically
-      # targets the calling org -- no explicit owner needed.
       - name: Generate token
         id: app-token
         uses: actions/create-github-app-token@v2
@@ -41,28 +39,79 @@ jobs:
           app-id: ${{ inputs.app_id }}
           private-key: ${{ secrets.app_private_key }}
 
-      # 2. Checkout the failing repo using the generated token
+      # 2. Checkout central repo for scripts, prompts, and config
+      - name: Checkout central repo
+        uses: actions/checkout@v4
+        with:
+          repository: fbetancourtc/auto-fix-agent
+          path: _auto-fix-scripts
+          sparse-checkout: |
+            scripts
+            prompts
+            config
+
+      # 3. Checkout the failing repo as main working directory
       - name: Checkout failing repo
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repository }}
           token: ${{ steps.app-token.outputs.token }}
 
-      # 3. Circuit breaker -- implemented in Plan 01-02
-      # Prevents infinite loops where auto-fix PR failures re-trigger the agent.
-      # Placeholder: always proceeds. Real logic (label check, SHA dedup) in Plan 01-02.
+      # 4. Circuit breaker (SECR-02)
+      # Prevents infinite loops: blocks if the failing run came from an
+      # auto-fix branch or a PR with the auto-fix label.
       - name: Circuit breaker
         id: circuit
         uses: actions/github-script@v7
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
-            core.setOutput('should_proceed', 'true');
+            const repo = '${{ inputs.repository }}'.split('/');
+            const owner = repo[0];
+            const repoName = repo[1];
+            const runId = parseInt('${{ inputs.failed_run_id }}');
 
-      # 4. Retrieve failed CI logs
+            // Get the workflow run details
+            const run = await github.rest.actions.getWorkflowRun({
+              owner,
+              repo: repoName,
+              run_id: runId
+            });
+
+            const headBranch = run.data.head_branch;
+
+            // Check 1: Is this from an auto-fix branch?
+            if (headBranch && headBranch.startsWith('auto-fix/')) {
+              core.setOutput('should_proceed', 'false');
+              core.info(`Circuit breaker TRIPPED: branch "${headBranch}" is an auto-fix branch`);
+              return;
+            }
+
+            // Check 2: Does any open PR on this branch have the auto-fix label?
+            try {
+              const pulls = await github.rest.pulls.list({
+                owner,
+                repo: repoName,
+                head: `${owner}:${headBranch}`,
+                state: 'open'
+              });
+              for (const pr of pulls.data) {
+                if (pr.labels.some(l => l.name === 'auto-fix')) {
+                  core.setOutput('should_proceed', 'false');
+                  core.info(`Circuit breaker TRIPPED: PR #${pr.number} has auto-fix label`);
+                  return;
+                }
+              }
+            } catch (e) {
+              core.warning(`Circuit breaker: could not check PRs: ${e.message}`);
+            }
+
+            core.setOutput('should_proceed', 'true');
+            core.info('Circuit breaker: CLEAR — proceeding with fix');
+
+      # 5. Retrieve and sanitize failed CI logs (SECR-01)
       # Uses env indirection (NOT inline ${{ }}) for untrusted content safety.
-      # Sanitization -- implemented in Plan 01-02
-      - name: Get failed logs
+      - name: Get and sanitize failed logs
         if: steps.circuit.outputs.should_proceed == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -70,32 +119,33 @@ jobs:
           REPO: ${{ inputs.repository }}
         run: |
           gh run view "$RUN_ID" --repo "$REPO" --log-failed 2>/dev/null \
-            | tail -500 > /tmp/ci-logs.txt \
-            || echo "No logs available" > /tmp/ci-logs.txt
+            > /tmp/raw-ci-logs.txt \
+            || echo "No logs available" > /tmp/raw-ci-logs.txt
+          bash _auto-fix-scripts/scripts/sanitize-logs.sh /tmp/raw-ci-logs.txt /tmp/ci-logs.txt
 
-      # 5. Load stack-specific prompt and combine with CI logs
+      # 6. Load stack-specific prompt
       - name: Load prompt
         id: prompt
         if: steps.circuit.outputs.should_proceed == 'true'
         env:
           TARGET_REPO: ${{ inputs.repository }}
         run: |
-          STACK=$(jq -r --arg repo "$TARGET_REPO" '.[$repo] // "typescript"' config/repo-stack-map.json)
+          STACK=$(jq -r --arg repo "$TARGET_REPO" '.[$repo] // "typescript"' _auto-fix-scripts/config/repo-stack-map.json)
           echo "Detected stack: $STACK for repo: $TARGET_REPO"
 
-          if [ ! -f "prompts/${STACK}.md" ]; then
-            echo "Warning: prompts/${STACK}.md not found, falling back to typescript"
-            STACK="typescript"
+          PROMPT_FILE="_auto-fix-scripts/prompts/${STACK}.md"
+          if [ ! -f "$PROMPT_FILE" ]; then
+            echo "Warning: ${PROMPT_FILE} not found, falling back to typescript"
+            PROMPT_FILE="_auto-fix-scripts/prompts/typescript.md"
           fi
 
-          # Build the combined prompt: stack prompt + CI failure logs
           {
             echo "combined<<PROMPT_EOF"
-            cat "prompts/${STACK}.md"
+            cat "$PROMPT_FILE"
             echo ""
             echo "---"
             echo ""
-            echo "CI FAILURE LOGS:"
+            echo "CI FAILURE LOGS (sanitized):"
             echo '```'
             cat /tmp/ci-logs.txt
             echo '```'
@@ -104,8 +154,11 @@ jobs:
 
           echo "stack=$STACK" >> "$GITHUB_OUTPUT"
 
-      # 6. Run Claude Code Action
-      # Token limits and scope restriction -- configured in Plan 01-02
+      # 7. Run Claude Code Action (SECR-03 + SECR-04)
+      # - --max-turns 10: soft cap on agent exchanges
+      # - timeout-minutes 15 on job: hard cap
+      # - --allowedTools: restricts to safe file and test operations
+      # - No env block: agent has NO access to tokens or secrets
       - name: Run Claude Code Action
         if: steps.circuit.outputs.should_proceed == 'true'
         uses: anthropics/claude-code-action@v1
@@ -114,4 +167,4 @@ jobs:
           prompt: ${{ steps.prompt.outputs.combined }}
           claude_args: |
             --max-turns 10
-            --allowedTools Edit,Read,Write,Bash
+            --allowedTools Edit,Read,Write,Bash(npm test),Bash(npm run test),Bash(npx vitest run),Bash(npx vitest),Bash(npm install),Bash(pip install -r requirements.txt),Bash(pytest),Bash(python -m pytest),Bash(./gradlew test),Bash(./gradlew ktlintCheck),Bash(npx eslint),Bash(npx tsc --noEmit),Bash(ruff check),Bash(mypy)
