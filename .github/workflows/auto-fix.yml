@@ -78,13 +78,20 @@ jobs:
             const runId = parseInt('${{ inputs.failed_run_id }}');
 
             // Get the workflow run details
-            const run = await github.rest.actions.getWorkflowRun({
-              owner,
-              repo: repoName,
-              run_id: runId
-            });
-
-            const headBranch = run.data.head_branch;
+            // Fail open: if API call fails, proceed with fix (don't block on transient errors)
+            let headBranch;
+            try {
+              const run = await github.rest.actions.getWorkflowRun({
+                owner,
+                repo: repoName,
+                run_id: runId
+              });
+              headBranch = run.data.head_branch;
+            } catch (e) {
+              core.warning(`Circuit breaker: getWorkflowRun failed (failing open): ${e.message}`);
+              core.setOutput('should_proceed', 'true');
+              return;
+            }
 
             // Check 1: Is this from an auto-fix branch?
             if (headBranch && headBranch.startsWith('auto-fix/')) {

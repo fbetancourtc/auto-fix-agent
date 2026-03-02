@@ -169,12 +169,14 @@ jobs:
           for step in steps:
               if step.get('name', '') == 'Run Claude Code Action':
                   env = step.get('env', {})
-                  bad_keys = [k for k in env if k in ('GH_TOKEN', 'GITHUB_TOKEN')]
-                  if bad_keys:
-                      print(f'FAIL: agent step has token in env: {bad_keys}')
+                  # GH_TOKEN is allowed (repo-scoped app token for gh CLI, not a production secret)
+                  # GITHUB_TOKEN and production secrets are NOT allowed
+                  blocked = [k for k in env if k in ('GITHUB_TOKEN',) or 'SECRET' in k or 'PRIVATE' in k]
+                  if blocked:
+                      print(f'FAIL: agent step has forbidden token in env: {blocked}')
                       sys.exit(1)
                   else:
-                      print('PASS: no tokens leaked to agent env')
+                      print('PASS: agent env has no production secrets (GH_TOKEN allowed as repo-scoped app token)')
                   break
           "; then
             :

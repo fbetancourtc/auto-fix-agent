@@ -32,10 +32,10 @@ if [ -z "$ALLOWED_DIRS" ]; then
   exit 1
 fi
 
-# Get list of changed files (staged and unstaged)
-CHANGED_FILES=$(git diff --name-only HEAD 2>/dev/null || true)
-STAGED_FILES=$(git diff --cached --name-only 2>/dev/null || true)
-ALL_CHANGES=$(echo -e "${CHANGED_FILES}\n${STAGED_FILES}" | sort -u | grep -v '^$' || true)
+# Get list of changed files in the agent's most recent commit
+# Uses HEAD~1..HEAD because the agent has already committed by the time
+# the post-agent validation step runs (git diff HEAD would be empty).
+ALL_CHANGES=$(git diff --name-only HEAD~1..HEAD 2>/dev/null || true)
 
 if [ -z "$ALL_CHANGES" ]; then
   echo "WARNING: No file changes detected -- agent produced no diff"
@@ -56,7 +56,7 @@ while IFS= read -r file; do
 
   if [ "$MATCH" = false ]; then
     VIOLATIONS+=("$file")
-    git checkout HEAD -- "$file" 2>/dev/null || true
+    git checkout HEAD~1 -- "$file" 2>/dev/null || true
   else
     ALLOWED_COUNT=$((ALLOWED_COUNT + 1))
   fi
