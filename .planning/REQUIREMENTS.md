@@ -10,7 +10,7 @@
 - [x] **FOUND-01**: Central repo hosts reusable GitHub Actions workflows callable by any repo across 3 orgs
 - [ ] **FOUND-02**: GitHub App registered and installed on all 3 orgs (Liftitapp, fbetancourtc, LiftitFinOps) for cross-org token generation
 - [ ] **FOUND-03**: Central repo is public to enable cross-org reusable workflow access without enterprise billing
-- [ ] **FOUND-04**: Prompt library organized by stack (TypeScript, Python, Kotlin) in central repo `prompts/` directory
+- [x] **FOUND-04**: Prompt library organized by stack (TypeScript, Python, Kotlin) in central repo `prompts/` directory
 
 ### CI Failure Detection
 
@@ -38,9 +38,9 @@
 
 ### Security
 
-- [ ] **SECR-01**: Input sanitization for CI log content injected into agent prompt (prevent prompt injection CVE-2026-21852)
+- [x] **SECR-01**: Input sanitization for CI log content injected into agent prompt (prevent prompt injection CVE-2026-21852)
 - [x] **SECR-02**: Circuit-breaker prevents agent from triggering on its own fix PR failures (deduplication by sha + workflow)
-- [ ] **SECR-03**: Per-run token limit to prevent runaway API costs on large log contexts
+- [x] **SECR-03**: Per-run token limit to prevent runaway API costs on large log contexts
 - [x] **SECR-04**: Agent never has access to production secrets or deployment triggers
 
 ### Multi-Repo Rollout
@@ -99,7 +99,7 @@
 | FOUND-01 | Phase 1 → Phase 2.1 + 2.2 | Complete |
 | FOUND-02 | Phase 1 → Phase 2.2 | Pending |
 | FOUND-03 | Phase 1 → Phase 2.2 | Pending |
-| FOUND-04 | Phase 1 → Phase 2.2 | Pending |
+| FOUND-04 | Phase 1 → Phase 2.2 | Complete |
 | CIFD-01 | Phase 2 → Phase 2.1 | Complete |
 | CIFD-02 | Phase 2 | Complete |
 | CIFD-03 | Phase 2 | Complete |
@@ -115,9 +115,9 @@
 | PRMG-03 | Phase 2 | Complete |
 | PRMG-04 | Phase 2 → Phase 2.1 | Complete |
 | PRMG-05 | Phase 2 | Complete |
-| SECR-01 | Phase 1 → Phase 2.2 | Pending |
+| SECR-01 | Phase 1 → Phase 2.2 | Complete |
 | SECR-02 | Phase 1 → Phase 2.1 + 2.2 | Complete |
-| SECR-03 | Phase 1 → Phase 2.2 | Pending |
+| SECR-03 | Phase 1 → Phase 2.2 | Complete |
 | SECR-04 | Phase 1 → Phase 2.1 + 2.2 | Complete |
 | ROLL-01 | Phase 3 | Pending |
 | ROLL-02 | Phase 3 | Pending |
@@ -136,4 +136,4 @@
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-02 after milestone audit gap closure planning*
+*Last updated: 2026-03-02 after Phase 2.2 retroactive Phase 1 verification*
