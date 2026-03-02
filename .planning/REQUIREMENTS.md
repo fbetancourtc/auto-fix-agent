@@ -1,7 +1,7 @@
 # Requirements: Auto-Fix Agent
 
 **Defined:** 2026-03-01
-**Core Value:** When CI fails on any monitored repo, an AI agent automatically fixes the code and opens a PR — reducing MTTF from hours to minutes.
+**Core Value:** When CI fails on any monitored repo, an AI agent automatically fixes the code and opens a PR -- reducing MTTF from hours to minutes.
 
 ## v1 Requirements
 
@@ -22,7 +22,7 @@
 ### Fix Generation
 
 - [ ] **FIXG-01**: Claude Code Action (`anthropics/claude-code-action@v1`) analyzes failure logs, searches codebase, and implements fix
-- [ ] **FIXG-02**: Agent scope restricted to source code only — cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
+- [ ] **FIXG-02**: Agent scope restricted to source code only -- cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
 - [ ] **FIXG-03**: Post-run file diff validation fails the workflow if any file outside source directories was modified
 - [ ] **FIXG-04**: TypeScript stack-specific fix prompt with Next.js, vitest, ESLint context
 - [ ] **FIXG-05**: Python stack-specific fix prompt with FastAPI, pytest, ruff context
@@ -34,7 +34,7 @@
 - [ ] **PRMG-02**: PR description includes root cause analysis, what changed, and how it was tested
 - [ ] **PRMG-03**: Retry guard limits to max 2 fix attempts per failure using PR label counter
 - [ ] **PRMG-04**: On retry exhaustion, create GitHub Issue labeled `needs-human` with failure context and links to both attempt PRs
-- [ ] **PRMG-05**: Human review gate — no auto-merge of fix PRs (enforced by architecture, not code)
+- [ ] **PRMG-05**: Human review gate -- no auto-merge of fix PRs (enforced by architecture, not code)
 
 ### Security
 
@@ -51,8 +51,8 @@
 
 ### Promotion Pipeline
 
-- [ ] **PROM-01**: Auto-create develop → qa PR when an auto-fix PR merges to develop
-- [ ] **PROM-02**: qa → main promotion requires mandatory human approval (non-negotiable)
+- [ ] **PROM-01**: Auto-create develop to qa PR when an auto-fix PR merges to develop
+- [ ] **PROM-02**: qa to main promotion requires mandatory human approval (non-negotiable)
 
 ### Observability
 
@@ -68,10 +68,10 @@
 
 ### External Error Sources
 
-- **EXTS-01**: Sentry webhook → `repository_dispatch` bridge for production error detection
-- **EXTS-02**: Sentry production error → fix PR pipeline with separate production error prompt
-- **EXTS-03**: Firebase Crashlytics → `repository_dispatch` bridge via Cloud Functions
-- **EXTS-04**: Crashlytics Android crash → fix PR pipeline
+- **EXTS-01**: Sentry webhook to `repository_dispatch` bridge for production error detection
+- **EXTS-02**: Sentry production error to fix PR pipeline with separate production error prompt
+- **EXTS-03**: Firebase Crashlytics to `repository_dispatch` bridge via Cloud Functions
+- **EXTS-04**: Crashlytics Android crash to fix PR pipeline
 
 ### Advanced
 
@@ -100,40 +100,40 @@
 | FOUND-02 | Phase 1 | Pending |
 | FOUND-03 | Phase 1 | Pending |
 | FOUND-04 | Phase 1 | Pending |
-| CIFD-01 | Phase 1 | Pending |
-| CIFD-02 | Phase 1 | Pending |
-| CIFD-03 | Phase 1 | Pending |
-| CIFD-04 | Phase 1 | Pending |
-| FIXG-01 | Phase 1 | Pending |
-| FIXG-02 | Phase 1 | Pending |
-| FIXG-03 | Phase 1 | Pending |
-| FIXG-04 | Phase 1 | Pending |
-| FIXG-05 | Phase 2 | Pending |
-| FIXG-06 | Phase 2 | Pending |
-| PRMG-01 | Phase 1 | Pending |
-| PRMG-02 | Phase 1 | Pending |
-| PRMG-03 | Phase 1 | Pending |
-| PRMG-04 | Phase 1 | Pending |
-| PRMG-05 | Phase 1 | Pending |
+| CIFD-01 | Phase 2 | Pending |
+| CIFD-02 | Phase 2 | Pending |
+| CIFD-03 | Phase 2 | Pending |
+| CIFD-04 | Phase 2 | Pending |
+| FIXG-01 | Phase 2 | Pending |
+| FIXG-02 | Phase 2 | Pending |
+| FIXG-03 | Phase 2 | Pending |
+| FIXG-04 | Phase 2 | Pending |
+| FIXG-05 | Phase 3 | Pending |
+| FIXG-06 | Phase 3 | Pending |
+| PRMG-01 | Phase 2 | Pending |
+| PRMG-02 | Phase 2 | Pending |
+| PRMG-03 | Phase 2 | Pending |
+| PRMG-04 | Phase 2 | Pending |
+| PRMG-05 | Phase 2 | Pending |
 | SECR-01 | Phase 1 | Pending |
 | SECR-02 | Phase 1 | Pending |
 | SECR-03 | Phase 1 | Pending |
 | SECR-04 | Phase 1 | Pending |
-| ROLL-01 | Phase 2 | Pending |
-| ROLL-02 | Phase 2 | Pending |
-| ROLL-03 | Phase 2 | Pending |
-| PROM-01 | Phase 3 | Pending |
-| PROM-02 | Phase 3 | Pending |
-| OBSV-01 | Phase 3 | Pending |
-| OBSV-02 | Phase 3 | Pending |
-| OBSV-03 | Phase 3 | Pending |
-| INTV-01 | Phase 2 | Pending |
+| ROLL-01 | Phase 3 | Pending |
+| ROLL-02 | Phase 3 | Pending |
+| ROLL-03 | Phase 3 | Pending |
+| PROM-01 | Phase 4 | Pending |
+| PROM-02 | Phase 4 | Pending |
+| OBSV-01 | Phase 4 | Pending |
+| OBSV-02 | Phase 4 | Pending |
+| OBSV-03 | Phase 4 | Pending |
+| INTV-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 32 total
 - Mapped to phases: 32
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after roadmap creation*
