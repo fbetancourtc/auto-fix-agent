@@ -30,11 +30,11 @@
 
 ### PR Management
 
-- [ ] **PRMG-01**: Auto-created fix PR on the failing repo with `auto-fix` label
-- [ ] **PRMG-02**: PR description includes root cause analysis, what changed, and how it was tested
-- [ ] **PRMG-03**: Retry guard limits to max 2 fix attempts per failure using PR label counter
-- [ ] **PRMG-04**: On retry exhaustion, create GitHub Issue labeled `needs-human` with failure context and links to both attempt PRs
-- [ ] **PRMG-05**: Human review gate -- no auto-merge of fix PRs (enforced by architecture, not code)
+- [x] **PRMG-01**: Auto-created fix PR on the failing repo with `auto-fix` label
+- [x] **PRMG-02**: PR description includes root cause analysis, what changed, and how it was tested
+- [x] **PRMG-03**: Retry guard limits to max 2 fix attempts per failure using PR label counter
+- [x] **PRMG-04**: On retry exhaustion, create GitHub Issue labeled `needs-human` with failure context and links to both attempt PRs
+- [x] **PRMG-05**: Human review gate -- no auto-merge of fix PRs (enforced by architecture, not code)
 
 ### Security
 
@@ -110,11 +110,11 @@
 | FIXG-04 | Phase 2 | Complete |
 | FIXG-05 | Phase 3 | Pending |
 | FIXG-06 | Phase 3 | Pending |
-| PRMG-01 | Phase 2 | Pending |
-| PRMG-02 | Phase 2 | Pending |
-| PRMG-03 | Phase 2 | Pending |
-| PRMG-04 | Phase 2 | Pending |
-| PRMG-05 | Phase 2 | Pending |
+| PRMG-01 | Phase 2 | Complete |
+| PRMG-02 | Phase 2 | Complete |
+| PRMG-03 | Phase 2 | Complete |
+| PRMG-04 | Phase 2 | Complete |
+| PRMG-05 | Phase 2 | Complete |
 | SECR-01 | Phase 1 | Pending |
 | SECR-02 | Phase 1 | Pending |
 | SECR-03 | Phase 1 | Pending |
