@@ -14,8 +14,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure and Security Guardrails** - GitHub App, public central repo, prompt library, and all security controls that must exist before any trigger fires
 - [x] **Phase 2: Core Fix Loop** - End-to-end CI failure detection, fix generation, and PR creation validated on a single TypeScript repo
-- [ ] **Phase 2.1: Integration Fixes & Documentation** - INSERTED — Fix validate-diff.sh bug, circuit breaker fail-open, test-guardrails assertion, README caller example, Python prompt/config sync, label setup docs
-- [ ] **Phase 2.2: Retroactive Phase 1 Verification** - INSERTED — Run verifier on Phase 1 to formally satisfy FOUND-01–04 and SECR-01–04 after Phase 2.1 fixes
+- [x] **Phase 2.1: Integration Fixes & Documentation** - INSERTED — Fix validate-diff.sh bug, circuit breaker fail-open, test-guardrails assertion, README caller example, Python prompt/config sync, label setup docs
+- [x] **Phase 2.2: Retroactive Phase 1 Verification** - INSERTED — Run verifier on Phase 1 to formally satisfy FOUND-01–04 and SECR-01–04 after Phase 2.1 fixes
 - [ ] **Phase 3: Multi-Repo Rollout** - Stack-specific prompts for Python and Kotlin, thin caller template, and all 14 repos enrolled with interactive review
 - [ ] **Phase 4: Promotion and Observability** - Automated develop-to-qa PR promotion, success/cost tracking, and budget alerts
 
@@ -69,7 +69,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 02.1-01: Fix validate-diff.sh, circuit breaker, test-guardrails assertion, README, Python prompt/config sync, label docs
+- [x] 02.1-01: Fix validate-diff.sh, circuit breaker, test-guardrails assertion, README, Python prompt/config sync, label docs
 
 ### Phase 2.2: Retroactive Phase 1 Verification
 **Goal**: Phase 1 infrastructure and security guardrails are formally verified against the codebase — closing the verification gap from the milestone audit
@@ -82,7 +82,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 02.2-01: Run gsd-verifier on Phase 1 to create VERIFICATION.md
+- [x] 02.2-01: Run gsd-verifier on Phase 1 to create VERIFICATION.md
 
 ### Phase 3: Multi-Repo Rollout
 **Goal**: All 14 repos across 3 orgs are enrolled in the auto-fix system with stack-appropriate prompts, and developers can interact with the agent via PR comments
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Infrastructure and Security Guardrails | 2/2 | Complete | 2026-03-02 |
 | 2. Core Fix Loop | 3/3 | Complete | 2026-03-02 |
-| 2.1 Integration Fixes & Documentation | 0/1 | Not started | - |
-| 2.2 Retroactive Phase 1 Verification | 0/1 | Not started | - |
+| 2.1 Integration Fixes & Documentation | 1/1 | Complete | 2026-03-02 |
+| 2.2 Retroactive Phase 1 Verification | 1/1 | Complete | 2026-03-02 |
 | 3. Multi-Repo Rollout | 0/3 | Not started | - |
 | 4. Promotion and Observability | 0/2 | Not started | - |
