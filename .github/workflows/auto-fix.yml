@@ -1,0 +1,117 @@
+name: Auto Fix Reusable
+
+on:
+  workflow_call:
+    inputs:
+      app_id:
+        required: true
+        type: string
+        description: "GitHub App ID for cross-org token generation"
+      failed_run_id:
+        required: true
+        type: string
+        description: "ID of the failed workflow run to analyze"
+      repository:
+        required: true
+        type: string
+        description: "Full repo name (owner/repo) where CI failed"
+    secrets:
+      anthropic_api_key:
+        required: true
+      app_private_key:
+        required: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+
+    steps:
+      # 1. Generate cross-org token
+      # The owner defaults to github.repository_owner which dynamically
+      # targets the calling org -- no explicit owner needed.
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ inputs.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+
+      # 2. Checkout the failing repo using the generated token
+      - name: Checkout failing repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      # 3. Circuit breaker -- implemented in Plan 01-02
+      # Prevents infinite loops where auto-fix PR failures re-trigger the agent.
+      # Placeholder: always proceeds. Real logic (label check, SHA dedup) in Plan 01-02.
+      - name: Circuit breaker
+        id: circuit
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            core.setOutput('should_proceed', 'true');
+
+      # 4. Retrieve failed CI logs
+      # Uses env indirection (NOT inline ${{ }}) for untrusted content safety.
+      # Sanitization -- implemented in Plan 01-02
+      - name: Get failed logs
+        if: steps.circuit.outputs.should_proceed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RUN_ID: ${{ inputs.failed_run_id }}
+          REPO: ${{ inputs.repository }}
+        run: |
+          gh run view "$RUN_ID" --repo "$REPO" --log-failed 2>/dev/null \
+            | tail -500 > /tmp/ci-logs.txt \
+            || echo "No logs available" > /tmp/ci-logs.txt
+
+      # 5. Load stack-specific prompt and combine with CI logs
+      - name: Load prompt
+        id: prompt
+        if: steps.circuit.outputs.should_proceed == 'true'
+        env:
+          TARGET_REPO: ${{ inputs.repository }}
+        run: |
+          STACK=$(jq -r --arg repo "$TARGET_REPO" '.[$repo] // "typescript"' config/repo-stack-map.json)
+          echo "Detected stack: $STACK for repo: $TARGET_REPO"
+
+          if [ ! -f "prompts/${STACK}.md" ]; then
+            echo "Warning: prompts/${STACK}.md not found, falling back to typescript"
+            STACK="typescript"
+          fi
+
+          # Build the combined prompt: stack prompt + CI failure logs
+          {
+            echo "combined<<PROMPT_EOF"
+            cat "prompts/${STACK}.md"
+            echo ""
+            echo "---"
+            echo ""
+            echo "CI FAILURE LOGS:"
+            echo '```'
+            cat /tmp/ci-logs.txt
+            echo '```'
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "stack=$STACK" >> "$GITHUB_OUTPUT"
+
+      # 6. Run Claude Code Action
+      # Token limits and scope restriction -- configured in Plan 01-02
+      - name: Run Claude Code Action
+        if: steps.circuit.outputs.should_proceed == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          prompt: ${{ steps.prompt.outputs.combined }}
+          claude_args: |
+            --max-turns 10
+            --allowedTools Edit,Read,Write,Bash

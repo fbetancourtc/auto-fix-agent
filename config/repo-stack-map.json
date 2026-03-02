@@ -1,0 +1,17 @@
+{
+  "Liftitapp/liftit-control-de-asistencia": "kotlin",
+  "Liftitapp/averias-marketplace": "typescript",
+  "Liftitapp/geocoding-enterprise": "typescript",
+  "Liftitapp/conciliacion-recaudo-liftit": "python",
+  "Liftitapp/liftit-ai-system": "typescript",
+  "Liftitapp/geocoding-liftit-api": "python",
+  "Liftitapp/liftit-cargo-receptor-de-cumplidos": "python",
+  "fbetancourtc/laundry-operating-dash": "typescript",
+  "fbetancourtc/lavandarosa-platform": "typescript",
+  "fbetancourtc/lavandarosa-petal-web": "typescript",
+  "fbetancourtc/laundry-property-managers": "typescript",
+  "fbetancourtc/laundry-cleaning-staff": "typescript",
+  "fbetancourtc/laundry-admin-dash": "typescript",
+  "fbetancourtc/binance-bot": "python",
+  "LiftitFinOps/conciliacion-averias": "python"
+}
