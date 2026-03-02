@@ -1,0 +1,19 @@
+# Auto-Fix Caller -- copy to your repo's .github/workflows/auto-fix-caller.yml
+# Customize the 'workflows' list to match your CI workflow name(s).
+# The name must match the 'name:' field in your CI workflow YAML exactly.
+# This file must exist on the repo's default branch (main/develop) for workflow_run to trigger.
+name: Auto Fix
+on:
+  workflow_run:
+    workflows: [CI]  # CHANGE THIS: e.g. [CI, Build, Test]
+    types: [completed]
+jobs:
+  fix:
+    if: github.event.workflow_run.conclusion == 'failure'
+    uses: fbetancourtc/auto-fix-agent/.github/workflows/auto-fix.yml@main
+    with:
+      app_id: "2985828"
+      failed_run_id: "${{ github.event.workflow_run.id }}"
+      repository: "${{ github.repository }}"
+      head_branch: "${{ github.event.workflow_run.head_branch }}"
+    secrets: { anthropic_api_key: "${{ secrets.ANTHROPIC_API_KEY }}", app_private_key: "${{ secrets.AUTO_FIX_APP_PRIVATE_KEY }}" }
