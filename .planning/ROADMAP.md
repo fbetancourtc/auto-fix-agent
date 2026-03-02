@@ -12,8 +12,10 @@ Deliver a centralized self-healing CI/CD system that monitors 14 repos across 3 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Infrastructure and Security Guardrails** - GitHub App, public central repo, prompt library, and all security controls that must exist before any trigger fires
-- [ ] **Phase 2: Core Fix Loop** - End-to-end CI failure detection, fix generation, and PR creation validated on a single TypeScript repo
+- [x] **Phase 1: Infrastructure and Security Guardrails** - GitHub App, public central repo, prompt library, and all security controls that must exist before any trigger fires
+- [x] **Phase 2: Core Fix Loop** - End-to-end CI failure detection, fix generation, and PR creation validated on a single TypeScript repo
+- [ ] **Phase 2.1: Integration Fixes & Documentation** - INSERTED — Fix validate-diff.sh bug, circuit breaker fail-open, test-guardrails assertion, README caller example, Python prompt/config sync, label setup docs
+- [ ] **Phase 2.2: Retroactive Phase 1 Verification** - INSERTED — Run verifier on Phase 1 to formally satisfy FOUND-01–04 and SECR-01–04 after Phase 2.1 fixes
 - [ ] **Phase 3: Multi-Repo Rollout** - Stack-specific prompts for Python and Kotlin, thin caller template, and all 14 repos enrolled with interactive review
 - [ ] **Phase 4: Promotion and Observability** - Automated develop-to-qa PR promotion, success/cost tracking, and budget alerts
 
@@ -51,6 +53,36 @@ Plans:
 - [ ] 02-01-PLAN.md -- CI failure detection: head_branch input, flakiness filter, thin caller workflow example
 - [ ] 02-02-PLAN.md -- Fix generation: config schema migration with allowed_dirs, diff validation script, agent git/gh capabilities, workflow-controlled PR creation
 - [ ] 02-03-PLAN.md -- PR management: prompt updates with retry guard, human escalation, git workflow instructions, agent env vars
+
+### Phase 2.1: Integration Fixes & Documentation
+**Goal**: All integration bugs and documentation gaps found by the milestone audit are fixed — validate-diff.sh catches committed forbidden files, circuit breaker fully fails open, test-guardrails passes against current codebase, README matches the canonical caller example, and Python prompt/config allowed_dirs are synced
+**Depends on**: Phase 2
+**Requirements**: FIXG-02, FIXG-03, SECR-02, SECR-04, CIFD-01, FOUND-01, PRMG-01, PRMG-04
+**Gap Closure**: Closes gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `validate-diff.sh` detects a forbidden file in the agent's most recent commit and reverts it (uses `HEAD~1..HEAD` diff)
+  2. Circuit breaker proceeds (fails open) when `getWorkflowRun` API call throws a network error
+  3. `test-guardrails.yml` scope-restriction test passes against the current `auto-fix.yml` (allows repo-scoped `GH_TOKEN`)
+  4. README caller example includes all 4 required inputs including `head_branch`
+  5. Python prompt `allowed_dirs` list matches `config/repo-stack-map.json` defaults for the python stack
+  6. README setup instructions include creating `auto-fix` and `needs-human` labels in enrolled repos
+**Plans**: TBD
+
+Plans:
+- [ ] 02.1-01: Fix validate-diff.sh, circuit breaker, test-guardrails assertion, README, Python prompt/config sync, label docs
+
+### Phase 2.2: Retroactive Phase 1 Verification
+**Goal**: Phase 1 infrastructure and security guardrails are formally verified against the codebase — closing the verification gap from the milestone audit
+**Depends on**: Phase 2.1
+**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, SECR-01, SECR-02, SECR-03, SECR-04
+**Gap Closure**: Closes verification gaps from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. A VERIFICATION.md exists for Phase 1 with all must-haves checked against the actual codebase
+  2. All 8 Phase 1 requirements (FOUND-01–04, SECR-01–04) are marked as satisfied or have documented gaps
+**Plans**: TBD
+
+Plans:
+- [ ] 02.2-01: Run gsd-verifier on Phase 1 to create VERIFICATION.md
 
 ### Phase 3: Multi-Repo Rollout
 **Goal**: All 14 repos across 3 orgs are enrolled in the auto-fix system with stack-appropriate prompts, and developers can interact with the agent via PR comments
@@ -91,7 +123,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure and Security Guardrails | 0/2 | Not started | - |
-| 2. Core Fix Loop | 0/3 | Not started | - |
+| 1. Infrastructure and Security Guardrails | 2/2 | Complete | 2026-03-02 |
+| 2. Core Fix Loop | 3/3 | Complete | 2026-03-02 |
+| 2.1 Integration Fixes & Documentation | 0/1 | Not started | - |
+| 2.2 Retroactive Phase 1 Verification | 0/1 | Not started | - |
 | 3. Multi-Repo Rollout | 0/3 | Not started | - |
 | 4. Promotion and Observability | 0/2 | Not started | - |
