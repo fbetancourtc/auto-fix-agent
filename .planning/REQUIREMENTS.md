@@ -7,14 +7,14 @@
 
 ### Foundation
 
-- [ ] **FOUND-01**: Central repo hosts reusable GitHub Actions workflows callable by any repo across 3 orgs
+- [x] **FOUND-01**: Central repo hosts reusable GitHub Actions workflows callable by any repo across 3 orgs
 - [ ] **FOUND-02**: GitHub App registered and installed on all 3 orgs (Liftitapp, fbetancourtc, LiftitFinOps) for cross-org token generation
 - [ ] **FOUND-03**: Central repo is public to enable cross-org reusable workflow access without enterprise billing
 - [ ] **FOUND-04**: Prompt library organized by stack (TypeScript, Python, Kotlin) in central repo `prompts/` directory
 
 ### CI Failure Detection
 
-- [ ] **CIFD-01**: `workflow_run` trigger fires automatically when any monitored CI workflow completes with failure
+- [x] **CIFD-01**: `workflow_run` trigger fires automatically when any monitored CI workflow completes with failure
 - [x] **CIFD-02**: CI failure logs retrieved via `gh run view --log-failed` and injected into agent context (last 500 lines)
 - [x] **CIFD-03**: Flakiness filter re-runs failed CI once before invoking agent to avoid fixing transient failures
 - [x] **CIFD-04**: Thin caller workflow (max 15 lines) that each repo adds to opt in
@@ -22,26 +22,26 @@
 ### Fix Generation
 
 - [x] **FIXG-01**: Claude Code Action (`anthropics/claude-code-action@v1`) analyzes failure logs, searches codebase, and implements fix
-- [ ] **FIXG-02**: Agent scope restricted to source code only -- cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
-- [ ] **FIXG-03**: Post-run file diff validation fails the workflow if any file outside source directories was modified
+- [x] **FIXG-02**: Agent scope restricted to source code only -- cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
+- [x] **FIXG-03**: Post-run file diff validation fails the workflow if any file outside source directories was modified
 - [x] **FIXG-04**: TypeScript stack-specific fix prompt with Next.js, vitest, ESLint context
 - [ ] **FIXG-05**: Python stack-specific fix prompt with FastAPI, pytest, ruff context
 - [ ] **FIXG-06**: Kotlin stack-specific fix prompt with Android, ktlint, detekt, Gradle context
 
 ### PR Management
 
-- [ ] **PRMG-01**: Auto-created fix PR on the failing repo with `auto-fix` label
+- [x] **PRMG-01**: Auto-created fix PR on the failing repo with `auto-fix` label
 - [x] **PRMG-02**: PR description includes root cause analysis, what changed, and how it was tested
 - [x] **PRMG-03**: Retry guard limits to max 2 fix attempts per failure using PR label counter
-- [ ] **PRMG-04**: On retry exhaustion, create GitHub Issue labeled `needs-human` with failure context and links to both attempt PRs
+- [x] **PRMG-04**: On retry exhaustion, create GitHub Issue labeled `needs-human` with failure context and links to both attempt PRs
 - [x] **PRMG-05**: Human review gate -- no auto-merge of fix PRs (enforced by architecture, not code)
 
 ### Security
 
 - [ ] **SECR-01**: Input sanitization for CI log content injected into agent prompt (prevent prompt injection CVE-2026-21852)
-- [ ] **SECR-02**: Circuit-breaker prevents agent from triggering on its own fix PR failures (deduplication by sha + workflow)
+- [x] **SECR-02**: Circuit-breaker prevents agent from triggering on its own fix PR failures (deduplication by sha + workflow)
 - [ ] **SECR-03**: Per-run token limit to prevent runaway API costs on large log contexts
-- [ ] **SECR-04**: Agent never has access to production secrets or deployment triggers
+- [x] **SECR-04**: Agent never has access to production secrets or deployment triggers
 
 ### Multi-Repo Rollout
 
@@ -96,29 +96,29 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 → Phase 2.1 + 2.2 | Pending |
+| FOUND-01 | Phase 1 → Phase 2.1 + 2.2 | Complete |
 | FOUND-02 | Phase 1 → Phase 2.2 | Pending |
 | FOUND-03 | Phase 1 → Phase 2.2 | Pending |
 | FOUND-04 | Phase 1 → Phase 2.2 | Pending |
-| CIFD-01 | Phase 2 → Phase 2.1 | Pending |
+| CIFD-01 | Phase 2 → Phase 2.1 | Complete |
 | CIFD-02 | Phase 2 | Complete |
 | CIFD-03 | Phase 2 | Complete |
 | CIFD-04 | Phase 2 | Complete |
 | FIXG-01 | Phase 2 | Complete |
-| FIXG-02 | Phase 2 → Phase 2.1 | Pending |
-| FIXG-03 | Phase 2 → Phase 2.1 | Pending |
+| FIXG-02 | Phase 2 → Phase 2.1 | Complete |
+| FIXG-03 | Phase 2 → Phase 2.1 | Complete |
 | FIXG-04 | Phase 2 | Complete |
 | FIXG-05 | Phase 3 | Pending |
 | FIXG-06 | Phase 3 | Pending |
-| PRMG-01 | Phase 2 → Phase 2.1 | Pending |
+| PRMG-01 | Phase 2 → Phase 2.1 | Complete |
 | PRMG-02 | Phase 2 | Complete |
 | PRMG-03 | Phase 2 | Complete |
-| PRMG-04 | Phase 2 → Phase 2.1 | Pending |
+| PRMG-04 | Phase 2 → Phase 2.1 | Complete |
 | PRMG-05 | Phase 2 | Complete |
 | SECR-01 | Phase 1 → Phase 2.2 | Pending |
-| SECR-02 | Phase 1 → Phase 2.1 + 2.2 | Pending |
+| SECR-02 | Phase 1 → Phase 2.1 + 2.2 | Complete |
 | SECR-03 | Phase 1 → Phase 2.2 | Pending |
-| SECR-04 | Phase 1 → Phase 2.1 + 2.2 | Pending |
+| SECR-04 | Phase 1 → Phase 2.1 + 2.2 | Complete |
 | ROLL-01 | Phase 3 | Pending |
 | ROLL-02 | Phase 3 | Pending |
 | ROLL-03 | Phase 3 | Pending |

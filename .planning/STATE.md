@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-02T15:29:57.193Z"
+status: in-progress
+last_updated: "2026-03-02T16:26:25Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,32 +18,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** When CI fails on any monitored repo, an AI agent automatically fixes the code and opens a PR -- reducing MTTF from hours to minutes.
-**Current focus:** Phase 2: Core Fix Loop
+**Current focus:** Phase 2.1: Integration Fixes and Documentation
 
 ## Current Position
 
-Phase: 2 of 4 (Core Fix Loop) -- COMPLETE
-Plan: 3 of 3 in current phase -- COMPLETE
-Status: Phase 2 complete. All 3 plans executed. Next: Phase 3 (Multi-Repo Rollout)
-Last activity: 2026-03-02 -- Plan 02-03 PR management complete
+Phase: 2.1 of 4 (Integration Fixes and Documentation) -- COMPLETE
+Plan: 1 of 1 in current phase -- COMPLETE
+Status: Phase 2.1 complete. All 6 integration bugs fixed. Next: Phase 3 (Multi-Repo Rollout)
+Last activity: 2026-03-02 -- Plan 02.1-01 integration fixes complete
 
-Progress: [██████░░░░] 50%
+Progress: [██████░░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 2.7min
-- Total execution time: 8min
+- Total plans completed: 4
+- Average duration: 2.5min
+- Total execution time: 10min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 02-core-fix-loop | 3/3 | 8min | 2.7min |
+| 02.1-integration-fixes | 1/1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (3min), 02-02 (2min), 02-03 (3min)
+- Last 5 plans: 02-01 (3min), 02-02 (2min), 02-03 (3min), 02.1-01 (2min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - [02-02]: force-with-lease for safe force-push after amending forbidden file reverts
 - [02-03]: No-commit tracking uses closed PR as lightweight marker (countable by retry guard's gh pr list)
 - [02-03]: Retry guard counts all auto-fix/ prefixed PRs in any state (open, closed, merged) to include both successful and failed attempts
+- [02.1-01]: Circuit breaker fails open with core.warning on getWorkflowRun network error -- transient API failures should not block fixes
+- [02.1-01]: SECR-04 test allows GH_TOKEN (repo-scoped app token) while blocking GITHUB_TOKEN and keys containing SECRET/PRIVATE
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 02-03-PLAN.md (PR management). Phase 2 complete. Next: Phase 3 (Multi-Repo Rollout).
+Stopped at: Completed 02.1-01-PLAN.md (integration fixes). Phase 2.1 complete. Next: Phase 3 (Multi-Repo Rollout).
 Resume file: None
 Note: Liftitapp org secrets pending (sent to admin). All other secrets configured.
