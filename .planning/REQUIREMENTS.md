@@ -15,16 +15,16 @@
 ### CI Failure Detection
 
 - [x] **CIFD-01**: `workflow_run` trigger fires automatically when any monitored CI workflow completes with failure
-- [ ] **CIFD-02**: CI failure logs retrieved via `gh run view --log-failed` and injected into agent context (last 500 lines)
+- [x] **CIFD-02**: CI failure logs retrieved via `gh run view --log-failed` and injected into agent context (last 500 lines)
 - [x] **CIFD-03**: Flakiness filter re-runs failed CI once before invoking agent to avoid fixing transient failures
 - [x] **CIFD-04**: Thin caller workflow (max 15 lines) that each repo adds to opt in
 
 ### Fix Generation
 
-- [ ] **FIXG-01**: Claude Code Action (`anthropics/claude-code-action@v1`) analyzes failure logs, searches codebase, and implements fix
-- [ ] **FIXG-02**: Agent scope restricted to source code only -- cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
-- [ ] **FIXG-03**: Post-run file diff validation fails the workflow if any file outside source directories was modified
-- [ ] **FIXG-04**: TypeScript stack-specific fix prompt with Next.js, vitest, ESLint context
+- [x] **FIXG-01**: Claude Code Action (`anthropics/claude-code-action@v1`) analyzes failure logs, searches codebase, and implements fix
+- [x] **FIXG-02**: Agent scope restricted to source code only -- cannot modify `.github/`, `.env`, CI config, Dockerfiles, or infrastructure
+- [x] **FIXG-03**: Post-run file diff validation fails the workflow if any file outside source directories was modified
+- [x] **FIXG-04**: TypeScript stack-specific fix prompt with Next.js, vitest, ESLint context
 - [ ] **FIXG-05**: Python stack-specific fix prompt with FastAPI, pytest, ruff context
 - [ ] **FIXG-06**: Kotlin stack-specific fix prompt with Android, ktlint, detekt, Gradle context
 
@@ -101,13 +101,13 @@
 | FOUND-03 | Phase 1 | Pending |
 | FOUND-04 | Phase 1 | Pending |
 | CIFD-01 | Phase 2 | Complete |
-| CIFD-02 | Phase 2 | Pending |
+| CIFD-02 | Phase 2 | Complete |
 | CIFD-03 | Phase 2 | Complete |
 | CIFD-04 | Phase 2 | Complete |
-| FIXG-01 | Phase 2 | Pending |
-| FIXG-02 | Phase 2 | Pending |
-| FIXG-03 | Phase 2 | Pending |
-| FIXG-04 | Phase 2 | Pending |
+| FIXG-01 | Phase 2 | Complete |
+| FIXG-02 | Phase 2 | Complete |
+| FIXG-03 | Phase 2 | Complete |
+| FIXG-04 | Phase 2 | Complete |
 | FIXG-05 | Phase 3 | Pending |
 | FIXG-06 | Phase 3 | Pending |
 | PRMG-01 | Phase 2 | Pending |
