@@ -33,6 +33,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
+      issues: write
 
     steps:
       # 1. Generate cross-org token
@@ -176,7 +177,7 @@ jobs:
         env:
           TARGET_REPO: ${{ inputs.repository }}
         run: |
-          STACK=$(jq -r --arg repo "$TARGET_REPO" '.[$repo] // "typescript"' _auto-fix-scripts/config/repo-stack-map.json)
+          STACK=$(jq -r --arg repo "$TARGET_REPO" '.repos[$repo].stack // "typescript"' _auto-fix-scripts/config/repo-stack-map.json)
           echo "Detected stack: $STACK for repo: $TARGET_REPO"
 
           PROMPT_FILE="_auto-fix-scripts/prompts/${STACK}.md"
@@ -203,9 +204,10 @@ jobs:
       # 8. Run Claude Code Action (SECR-03 + SECR-04)
       # - --max-turns 10: soft cap on agent exchanges
       # - timeout-minutes 15 on job: hard cap
-      # - --allowedTools: restricts to safe file and test operations
-      # - No env block: agent has NO access to tokens or secrets
+      # - --allowedTools: restricts to safe file/test + git/gh operations
+      # - GH_TOKEN: repo-scoped app token for gh CLI (NOT production secrets -- satisfies SECR-04)
       - name: Run Claude Code Action
+        id: agent
         if: steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
         uses: anthropics/claude-code-action@v1
         with:
@@ -213,4 +215,51 @@ jobs:
           prompt: ${{ steps.prompt.outputs.combined }}
           claude_args: |
             --max-turns 10
-            --allowedTools Edit,Read,Write,Bash(npm test),Bash(npm run test),Bash(npx vitest run),Bash(npx vitest),Bash(npm install),Bash(pip install -r requirements.txt),Bash(pytest),Bash(python -m pytest),Bash(./gradlew test),Bash(./gradlew ktlintCheck),Bash(npx eslint),Bash(npx tsc --noEmit),Bash(ruff check),Bash(mypy)
+            --allowedTools Edit,Read,Write,Bash(npm test),Bash(npm run test),Bash(npx vitest run),Bash(npx vitest),Bash(npm install),Bash(pip install -r requirements.txt),Bash(pytest),Bash(python -m pytest),Bash(./gradlew test),Bash(./gradlew ktlintCheck),Bash(npx eslint),Bash(npx tsc --noEmit),Bash(ruff check),Bash(mypy),Bash(git checkout -b:*),Bash(git add:*),Bash(git status),Bash(git diff:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(gh issue create:*)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      # 9. Post-agent diff validation (FIXG-02, FIXG-03)
+      # Checks the agent's changes against allowed directories.
+      # If forbidden files were committed, reverts them, amends, and force-pushes.
+      # If no valid changes remain after revert, closes the PR.
+      - name: Post-agent diff validation
+        id: diff-check
+        if: steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
+        env:
+          TARGET_REPO: ${{ inputs.repository }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Check if agent actually pushed a branch (it may have stopped without committing)
+          BRANCH_NAME=$(git branch --show-current)
+          if [[ "$BRANCH_NAME" != auto-fix/* ]]; then
+            echo "Agent did not create an auto-fix branch -- no changes to validate"
+            exit 0
+          fi
+
+          # Run diff validation against allowed directories
+          RESULT=0
+          bash _auto-fix-scripts/scripts/validate-diff.sh "$TARGET_REPO" _auto-fix-scripts/config/repo-stack-map.json || RESULT=$?
+
+          if [ "$RESULT" -eq 0 ]; then
+            echo "All changes in allowed directories -- no corrections needed"
+            exit 0
+          fi
+
+          # validate-diff.sh reverted forbidden files. Check if any valid changes remain.
+          REMAINING=$(git diff --name-only HEAD~1 2>/dev/null || true)
+          if [ -z "$REMAINING" ]; then
+            echo "::warning::All agent changes were in forbidden directories -- closing PR"
+            # Find and close the PR if it exists
+            PR_NUM=$(gh pr list --repo "$TARGET_REPO" --head "$BRANCH_NAME" --json number --jq '.[0].number' 2>/dev/null || true)
+            if [ -n "$PR_NUM" ]; then
+              gh pr close "$PR_NUM" --repo "$TARGET_REPO" --comment "Closed: all changes were in forbidden directories"
+            fi
+            exit 0
+          fi
+
+          # Amend commit to exclude reverted files, force-push correction
+          git add -A
+          git commit --amend --no-edit
+          git push --force-with-lease
+          echo "::warning::Reverted forbidden files and force-pushed correction"
