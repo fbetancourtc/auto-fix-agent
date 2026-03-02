@@ -29,11 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A test payload containing known prompt injection patterns is sanitized before reaching the agent context
   4. The circuit-breaker correctly blocks a workflow triggered by an `auto-fix`-labeled PR's own CI failure
   5. A workflow run that exceeds the per-run token limit is terminated before completion
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Central repo setup, GitHub App registration, cross-org token generation
-- [ ] 01-02: Security guardrails -- input sanitization, circuit-breaker, token limits, scope restriction
+- [ ] 01-01-PLAN.md -- Central repo structure, reusable workflow, GitHub App setup, prompt library, repo-stack mapping
+- [ ] 01-02-PLAN.md -- Security guardrails: input sanitization, circuit-breaker, token limits, scope restriction, test workflow
 
 ### Phase 2: Core Fix Loop
 **Goal**: When CI fails on a single TypeScript repo, the agent automatically retrieves logs, diagnoses the failure, implements a source-code-only fix, and opens a labeled PR with retry guard and human escalation
