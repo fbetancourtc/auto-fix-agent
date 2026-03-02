@@ -14,10 +14,10 @@
 
 ### CI Failure Detection
 
-- [ ] **CIFD-01**: `workflow_run` trigger fires automatically when any monitored CI workflow completes with failure
+- [x] **CIFD-01**: `workflow_run` trigger fires automatically when any monitored CI workflow completes with failure
 - [ ] **CIFD-02**: CI failure logs retrieved via `gh run view --log-failed` and injected into agent context (last 500 lines)
-- [ ] **CIFD-03**: Flakiness filter re-runs failed CI once before invoking agent to avoid fixing transient failures
-- [ ] **CIFD-04**: Thin caller workflow (max 15 lines) that each repo adds to opt in
+- [x] **CIFD-03**: Flakiness filter re-runs failed CI once before invoking agent to avoid fixing transient failures
+- [x] **CIFD-04**: Thin caller workflow (max 15 lines) that each repo adds to opt in
 
 ### Fix Generation
 
@@ -100,10 +100,10 @@
 | FOUND-02 | Phase 1 | Pending |
 | FOUND-03 | Phase 1 | Pending |
 | FOUND-04 | Phase 1 | Pending |
-| CIFD-01 | Phase 2 | Pending |
+| CIFD-01 | Phase 2 | Complete |
 | CIFD-02 | Phase 2 | Pending |
-| CIFD-03 | Phase 2 | Pending |
-| CIFD-04 | Phase 2 | Pending |
+| CIFD-03 | Phase 2 | Complete |
+| CIFD-04 | Phase 2 | Complete |
 | FIXG-01 | Phase 2 | Pending |
 | FIXG-02 | Phase 2 | Pending |
 | FIXG-03 | Phase 2 | Pending |
