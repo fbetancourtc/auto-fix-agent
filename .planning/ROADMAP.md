@@ -45,12 +45,12 @@ Plans:
   3. A flaky test (passes on re-run) does NOT trigger the agent -- the flakiness filter catches it first
   4. After 2 failed fix attempts on the same failure, a GitHub Issue labeled `needs-human` is created with links to both attempt PRs
   5. No file outside source directories is modified by the agent (post-run diff validation rejects the workflow if violated)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: CI failure detection workflow with flakiness filter and log retrieval
-- [ ] 02-02: Claude Code Action fix generation with TypeScript prompt and scope enforcement
-- [ ] 02-03: PR creation, retry guard, and human escalation
+- [ ] 02-01-PLAN.md -- CI failure detection: head_branch input, flakiness filter, thin caller workflow example
+- [ ] 02-02-PLAN.md -- Fix generation: config schema migration with allowed_dirs, diff validation script, agent git/gh capabilities, workflow-controlled PR creation
+- [ ] 02-03-PLAN.md -- PR management: prompt updates with retry guard, human escalation, git workflow instructions, agent env vars
 
 ### Phase 3: Multi-Repo Rollout
 **Goal**: All 14 repos across 3 orgs are enrolled in the auto-fix system with stack-appropriate prompts, and developers can interact with the agent via PR comments
