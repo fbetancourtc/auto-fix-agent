@@ -102,8 +102,10 @@ cd -
 
 # --- Write GitHub Actions summary ---
 
+PRICING_FILE="${PRICING_FILE:-_auto-fix-scripts/config/pricing.json}"
+MONTHLY_BUDGET=$(jq -r '.budget.monthly_limit_usd' "$PRICING_FILE")
 MONTHLY_TOTAL=$(jq "[.runs[] | select(.month == \"$MONTH\") | .cost_usd] | add // 0" "$METRICS_FILE")
-BUDGET_PCT=$(echo "$MONTHLY_TOTAL 200" | awk '{printf "%.0f", ($1/$2)*100}')
+BUDGET_PCT=$(echo "$MONTHLY_TOTAL $MONTHLY_BUDGET" | awk '{printf "%.0f", ($1/$2)*100}')
 
 cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
 ## Auto-Fix Run Metrics
@@ -114,6 +116,6 @@ cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
 | Cost | \$$COST |
 | Input Tokens | $INPUT_TOKENS |
 | Output Tokens | $OUTPUT_TOKENS |
-| Monthly Spend | \$$MONTHLY_TOTAL / \$200 |
+| Monthly Spend | \$$MONTHLY_TOTAL / \$$MONTHLY_BUDGET |
 | Budget Used | ${BUDGET_PCT}% |
 SUMMARY_EOF
