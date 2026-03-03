@@ -40,7 +40,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Promotion pipeline (promote.yml + caller template + repo config)
 - [x] 04-02-PLAN.md — Observability (success tracking, cost tracking, budget alerts)
-- [ ] 04-03-PLAN.md — Gap closure: reviewer decline handler + budget display fix
+- [x] 04-03-PLAN.md — Gap closure: reviewer decline handler + budget display fix
 
 ## Progress
 
@@ -51,4 +51,4 @@ Plans:
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 3. Multi-Repo Rollout | v1.1 | 2/3 | In Progress | - |
-| 4. Promotion and Observability | v1.1 | 2/3 | In Progress | - |
+| 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
