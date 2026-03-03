@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T12:05:49.513Z"
+last_updated: "2026-03-03T13:34:38Z"
 progress:
   total_phases: 2
   completed_phases: 2
@@ -67,21 +67,25 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - PRICING_FILE uses bash default substitution for scope safety in record-metrics.sh (04-03)
 - [Phase quick-1]: Used GitHub API (gh api) to fetch repo-stack-map.json instead of actions/checkout for promote.yml config gating
 - [Phase quick-1]: Gated promote.yml PR creation steps with if: condition rather than early job exit for cleaner GitHub Actions UI
+- [Phase quick-2]: geocoding-liftit-api blocked by read-only access -- needs admin to grant push, then re-run deploy-callers.sh
+- [Phase quick-2]: Fixed jq alternative operator bug: `//` treats `false` as falsy, used explicit `has()` check in deploy-callers.sh
 
 ### Blockers/Concerns (carried to next milestone)
 
 - `allowedTools` enforcement gap (claude-code-action issue #860) -- validate-diff.sh mitigates
 - Cross-org `secrets: inherit` fails silently -- callers must explicitly pass secrets
 - Liftitapp org secrets pending admin action
+- geocoding-liftit-api needs push access granted before auto-fix-caller.yml can be deployed
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | Fix v1.1 audit gaps: Phase 3 VERIFICATION.md, promote config wiring, promote-caller deployment | 2026-03-03 | a8dd6b3 | [1-fix-milestone-v1-1-audit-gaps-phase-3-ve](./quick/1-fix-milestone-v1-1-audit-gaps-phase-3-ve/) |
+| 2 | Deploy auto-fix-caller.yml to 5 Liftitapp repos, promote-caller.yml to 3 fbetancourtc repos, create deploy-callers.sh | 2026-03-03 | 892ffd4 | [2-deploy-the-14-liftitapp-repos](./quick/2-deploy-the-14-liftitapp-repos/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed quick task 1: Fix v1.1 audit gaps
-Stopped at: All v1.1 plans complete (6/6). Quick task closed 3 audit gaps. Ready for /gsd:complete-milestone v1.1.
+Last activity: 2026-03-03 - Completed quick task 2: Deploy caller workflows to Liftitapp and remaining repos
+Stopped at: 13/15 repos have auto-fix-caller.yml, all 7 fbetancourtc repos have promote-caller.yml. geocoding-liftit-api needs admin push access.
 Resume file: N/A
