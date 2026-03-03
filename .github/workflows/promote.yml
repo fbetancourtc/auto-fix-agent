@@ -52,9 +52,37 @@ jobs:
           private-key: ${{ secrets.app_private_key }}
           repositories: ${{ github.event.repository.name }}
 
-      # 2. Create develop→qa PR
+      # 2. Check promotion config from repo-stack-map.json
+      - name: Check promotion config
+        id: config
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ inputs.repository }}
+        run: |
+          # Fetch repo-stack-map.json from auto-fix-agent
+          REPO_CONFIG=$(gh api "repos/fbetancourtc/auto-fix-agent/contents/config/repo-stack-map.json" \
+            --jq '.content' | base64 -d)
+
+          # Check repo-specific override first, then defaults
+          ENABLED=$(echo "$REPO_CONFIG" | jq -r \
+            --arg repo "$REPO" \
+            'if .repos[$repo].promotion.enabled == false then "false"
+             elif .repos[$repo].promotion.enabled == true then "true"
+             else .defaults.promotion.enabled // true | tostring
+             end')
+
+          if [ "$ENABLED" = "false" ]; then
+            echo "Promotion disabled for $REPO in repo-stack-map.json — skipping"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Promotion enabled for $REPO"
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 3. Create develop→qa PR
       # Checks for existing open PR first to prevent duplicates.
       - name: Create develop to qa PR
+        if: steps.config.outputs.enabled != 'false'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ inputs.repository }}
@@ -97,9 +125,10 @@ jobs:
 
           echo "Created develop→qa PR"
 
-      # 3. Create qa→main PR (manual merge gate)
+      # 4. Create qa→main PR (manual merge gate)
       # Creates the PR but NEVER merges it — human must click Merge.
       - name: Create qa to main PR (awaiting human approval)
+        if: steps.config.outputs.enabled != 'false'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ inputs.repository }}
