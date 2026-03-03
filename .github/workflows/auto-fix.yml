@@ -50,10 +50,12 @@ jobs:
         with:
           repository: fbetancourtc/auto-fix-agent
           path: _auto-fix-scripts
+          token: ${{ steps.app-token.outputs.token }}
           sparse-checkout: |
             scripts
             prompts
             config
+            metrics
 
       # 3. Checkout the failing repo as main working directory
       - name: Checkout failing repo
@@ -332,3 +334,34 @@ jobs:
 
           gh pr close "$PR_URL" --repo "$TARGET_REPO" --comment "Auto-closed: tracking a failed fix attempt (agent could not produce a working fix)"
           echo "Tracked failed attempt via closed PR: $PR_URL"
+
+      # 11. Determine if agent created a fix PR (for metrics)
+      - name: Determine fix outcome
+        id: fix-outcome
+        if: always() && steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RUN_ID: ${{ inputs.failed_run_id }}
+          TARGET_REPO: ${{ inputs.repository }}
+        run: |
+          BRANCH_NAME="auto-fix/${RUN_ID}"
+          FIX_PR=$(gh pr list --repo "$TARGET_REPO" --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$FIX_PR" ] && [ "$FIX_PR" != "null" ]; then
+            echo "fix_pr_created=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fix_pr_created=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 12. Record run metrics and check budget thresholds
+      - name: Record metrics
+        if: always() && steps.circuit.outputs.should_proceed == 'true' && steps.flaky.outputs.is_flaky != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          EXECUTION_FILE: ${{ steps.agent.outputs.execution_file }}
+          TARGET_REPO: ${{ inputs.repository }}
+          RUN_ID: ${{ inputs.failed_run_id }}
+          FIX_PR_CREATED: ${{ steps.fix-outcome.outputs.fix_pr_created }}
+          CENTRAL_REPO: "fbetancourtc/auto-fix-agent"
+        run: |
+          bash _auto-fix-scripts/scripts/record-metrics.sh
+          bash _auto-fix-scripts/scripts/check-budget.sh
