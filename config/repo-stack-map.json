@@ -8,19 +8,26 @@
     },
     "kotlin": {
       "allowed_dirs": ["app/src/"]
+    },
+    "promotion": {
+      "enabled": true,
+      "source_branch": "develop",
+      "qa_branch": "qa",
+      "main_branch": "main"
     }
   },
   "repos": {
     "Liftitapp/liftit-control-de-asistencia": {
       "stack": "kotlin",
-      "allowed_dirs": ["app/src/", "dashboard/src/", "backend/src/"]
+      "allowed_dirs": ["app/src/", "dashboard/src/", "backend/src/"],
+      "promotion": { "enabled": false }
     },
-    "Liftitapp/averias-marketplace": { "stack": "typescript" },
-    "Liftitapp/geocoding-enterprise": { "stack": "typescript" },
-    "Liftitapp/conciliacion-recaudo-liftit": { "stack": "python" },
-    "Liftitapp/liftit-ai-system": { "stack": "typescript" },
-    "Liftitapp/geocoding-liftit-api": { "stack": "python" },
-    "Liftitapp/liftit-cargo-receptor-de-cumplidos": { "stack": "python" },
+    "Liftitapp/averias-marketplace": { "stack": "typescript", "promotion": { "enabled": false } },
+    "Liftitapp/geocoding-enterprise": { "stack": "typescript", "promotion": { "enabled": false } },
+    "Liftitapp/conciliacion-recaudo-liftit": { "stack": "python", "promotion": { "enabled": false } },
+    "Liftitapp/liftit-ai-system": { "stack": "typescript", "promotion": { "enabled": false } },
+    "Liftitapp/geocoding-liftit-api": { "stack": "python", "promotion": { "enabled": false } },
+    "Liftitapp/liftit-cargo-receptor-de-cumplidos": { "stack": "python", "promotion": { "enabled": false } },
     "fbetancourtc/laundry-operating-dash": { "stack": "typescript" },
     "fbetancourtc/lavandarosa-platform": { "stack": "typescript" },
     "fbetancourtc/lavandarosa-petal-web": { "stack": "typescript" },
@@ -28,6 +35,6 @@
     "fbetancourtc/laundry-cleaning-staff": { "stack": "typescript" },
     "fbetancourtc/laundry-admin-dash": { "stack": "typescript" },
     "fbetancourtc/binance-bot": { "stack": "python" },
-    "LiftitFinOps/conciliacion-averias": { "stack": "python" }
+    "LiftitFinOps/conciliacion-averias": { "stack": "python", "promotion": { "enabled": false } }
   }
 }
