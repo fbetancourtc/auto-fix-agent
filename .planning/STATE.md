@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v1.1
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-03T03:22:00Z"
+status: in-progress
+last_updated: "2026-03-03T04:26:25Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 0
-  total_plans: 3
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** When CI fails on any monitored repo, an AI agent automatically fixes the code and opens a PR -- reducing MTTF from hours to minutes.
-**Current focus:** v1.1 Phase 3 -- Multi-Repo Rollout (Python prompt expansion, onboarding, enrollment).
+**Current focus:** v1.1 Phase 4 -- Promotion and Observability (promotion pipeline, success tracking, budget alerts).
 
 ## Current Position
 
 Milestone: v1.1
-Phase: 03-multi-repo-rollout
-Current Plan: 3 of 3
-Status: 03-03 complete, 03-02 checkpoint still pending
+Phase: 04-promotion-and-observability
+Current Plan: 1 of 2
+Status: 04-01 complete, 04-02 pending
 
-Progress: [██████----] 67% (2/3 plans complete)
+Progress: [██████----] 60% (3/5 plans complete in v1.1)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 2.6min
-- Total execution time: ~17min
+- Total plans completed: 9
+- Average duration: 2.4min
+- Total execution time: ~19min
 
 **By Phase:**
 
@@ -45,6 +45,7 @@ Progress: [██████----] 67% (2/3 plans complete)
 | 02.1-integration-fixes | 1/1 | 2min | 2min |
 | 02.2-phase-1-verification | 1/1 | 3min | 3min |
 | 03-multi-repo-rollout | 2/3 | 6min | 3min |
+| 04-promotion-and-observability | 1/2 | 2min | 2min |
 
 ## Accumulated Context
 
@@ -56,6 +57,9 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - ONBOARDING.md placed at repo root for discoverability (03-01)
 - Included all 7 Liftitapp repos (repo-stack-map.json has 7, not 6 as plan title stated) (03-03)
 - averias-marketplace needs CI setup before auto-fix activation (03-03)
+- promote.yml uses same token pattern as auto-fix.yml for consistency (04-01)
+- Liftitapp/LiftitFinOps repos default promotion.enabled=false pending admin and branch audit (04-01)
+- qa->main PR never auto-merged -- human must click Merge (04-01)
 
 ### Blockers/Concerns (carried to next milestone)
 
@@ -65,7 +69,7 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Phase 4 planned and verified (2 plans, 1 wave). Ready to execute. Phase 3 plan 03-02 checkpoint still pending (Task 3 human approval).
-Resume file: .planning/phases/04-promotion-and-observability/04-01-PLAN.md
-Note: Phase 4 has 2 parallel plans ready (04-01 Promotion Pipeline, 04-02 Observability). Run /gsd:execute-phase 4 to start. Phase 3 03-02 Task 3 still needs human approval for secrets verification.
+Last session: 2026-03-03
+Stopped at: Completed 04-01-PLAN.md (Promotion Pipeline). 04-02 (Observability) ready to execute.
+Resume file: .planning/phases/04-promotion-and-observability/04-02-PLAN.md
+Note: Phase 3 plan 03-02 Task 3 still needs human approval for secrets verification.
