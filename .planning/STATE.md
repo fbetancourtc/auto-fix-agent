@@ -64,6 +64,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 03-01-PLAN.md (Python prompt + ONBOARDING.md)
-Resume file: None
-Note: Next up is 03-02-PLAN.md (enroll 8 repos).
+Stopped at: Phase 3 Wave 1 complete (03-01 done). Wave 2 pending (03-02 + 03-03 in parallel).
+Resume file: .planning/phases/03-multi-repo-rollout/03-02-PLAN.md
+Note: Resume with `/gsd:execute-phase 3` — it auto-skips completed plans and picks up from 03-02.
