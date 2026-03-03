@@ -1,0 +1,19 @@
+# Promote Caller -- copy to your repo's .github/workflows/promote-caller.yml
+# Triggers when an auto-fix PR is merged into develop.
+# This file must exist on the repo's default branch for pull_request events to trigger.
+name: Promote Fix
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  promote:
+    if: >-
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'auto-fix')
+    uses: fbetancourtc/auto-fix-agent/.github/workflows/promote.yml@main
+    with:
+      app_id: "2985828"
+      repository: "${{ github.repository }}"
+      merged_pr_number: "${{ github.event.pull_request.number }}"
+    secrets:
+      app_private_key: "${{ secrets.AUTO_FIX_APP_PRIVATE_KEY }}"
