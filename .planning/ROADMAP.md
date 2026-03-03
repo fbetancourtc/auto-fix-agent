@@ -33,13 +33,14 @@ Plans:
 
 #### Phase 4: Promotion and Observability
 **Goal:** Add develop→qa→main promotion flow with human approval gate, plus success rate tracking, cost-per-fix tracking via token usage, and budget alerts at 50%/80% of $200/month threshold.
-**Plans:** 2
+**Plans:** 3
 **Dependencies:** Phase 3 complete
 **Requirements:** Auto-create develop→qa PR when fix PR merges, human approval gate for qa→main promotion, success rate tracking per repo, cost-per-fix tracking via token usage output, budget alerts at 50%/80% of $200/month threshold
 
 Plans:
 - [x] 04-01-PLAN.md — Promotion pipeline (promote.yml + caller template + repo config)
-- [ ] 04-02-PLAN.md — Observability (success tracking, cost tracking, budget alerts)
+- [x] 04-02-PLAN.md — Observability (success tracking, cost tracking, budget alerts)
+- [ ] 04-03-PLAN.md — Gap closure: reviewer decline handler + budget display fix
 
 ## Progress
 
@@ -50,4 +51,4 @@ Plans:
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 3. Multi-Repo Rollout | v1.1 | 2/3 | In Progress | - |
-| 4. Promotion and Observability | v1.1 | 1/2 | In Progress | - |
+| 4. Promotion and Observability | v1.1 | 2/3 | In Progress | - |
