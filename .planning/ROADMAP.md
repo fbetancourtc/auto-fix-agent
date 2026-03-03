@@ -26,7 +26,7 @@
 Plans:
 - [x] 03-01-PLAN.md — Expand Python prompt + create ONBOARDING.md
 - [ ] 03-02-PLAN.md — Enroll 8 repos (fbetancourtc + LiftitFinOps) with callers, secrets, smoke test
-- [ ] 03-03-PLAN.md — Prepare Liftitapp activation guide for 6 repos (pending admin)
+- [x] 03-03-PLAN.md — Prepare Liftitapp activation guide for 7 repos (pending admin)
 
 **Dependencies:** v1.0 complete
 **Requirements:** Python stack-specific fix prompt, Kotlin stack-specific fix prompt, thin caller template with onboarding docs, all 14 repos enrolled with working auto-fix
@@ -45,5 +45,5 @@ Plans:
 | 2. Core Fix Loop | v1.0 | 3/3 | Complete | 2026-03-02 |
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
-| 3. Multi-Repo Rollout | v1.1 | 1/3 | In Progress | - |
+| 3. Multi-Repo Rollout | v1.1 | 2/3 | In Progress | - |
 | 4. Promotion and Observability | v1.1 | 0/2 | Not started | - |
