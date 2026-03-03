@@ -150,12 +150,41 @@ After creating the escalation issue, **stop**. Do not attempt any fix.
 
 ## Common Patterns
 
-- **pytest failures:** Check fixtures, async handling (`pytest-asyncio`), mock setup
-- **ruff errors:** Follow existing code style, check import ordering, unused imports
-- **mypy errors:** Ensure proper type annotations, check Optional handling, generic types
-- **Import errors:** Verify module paths, check `__init__.py` exports
+### Import Errors
+- **ModuleNotFoundError:** Check that the package is listed in `requirements.txt` or `pyproject.toml`, verify it is installed in CI, and check for typos in the module name. Common cause: package name differs from import name (e.g., `pip install Pillow` but `import PIL`).
+- **Circular imports:** Trace the import chain to find the cycle. Break it with lazy imports inside functions, or extract shared types/constants into a separate module that both sides can import without circular dependency.
+- **Relative vs absolute imports:** Use absolute imports (`from app.models import User`) unless the project consistently uses relative imports. Check existing import style in neighboring files. Mixing styles causes conftest discovery issues in pytest.
+- **Missing __init__.py:** Verify `__init__.py` exists in all package directories. Some projects use `src/` layout which requires `pythonpath` configuration in `pyproject.toml` under `[tool.pytest.ini_options]`. Check pytest rootdir detection if imports fail only in tests.
 
-<!-- TODO: Expand with project-specific patterns in Phase 3 -->
+### Missing Dependencies
+- **Package in code but not in requirements:** Add the missing package to `requirements.txt` or `pyproject.toml` under `[project.dependencies]`. Use the exact version constraint style already present in the file (e.g., `>=1.0,<2.0` or `~=1.0`).
+- **Version conflicts:** Check `pip install --dry-run` output for incompatible version constraints between packages. Look for `ResolutionImpossible` or `incompatible` in CI logs. Pin to a compatible version range that satisfies all dependents.
+- **Dev-only deps missing in CI:** Check if the package is in a dev group (`[project.optional-dependencies]` or `requirements-dev.txt`) but CI only installs production deps. Ensure CI runs `pip install -e ".[dev]"` or `pip install -r requirements-dev.txt` for test/lint jobs.
+- **Transitive dependency breakage:** A dependency updated and broke its API. Pin the working version in your requirements file, or update your usage to match the new API. Check the dependency's changelog for migration guidance.
+
+### Fixture Issues
+- **conftest.py not discovered:** Verify `conftest.py` is in the correct directory relative to tests. pytest discovers `conftest.py` files in the test's parent directories up to rootdir. If fixtures are "not found", check that `conftest.py` is not nested too deep or outside the rootdir.
+- **Fixture scope mismatch:** `function` scope fixtures are recreated per test, `session` scope fixtures are shared across all tests. If a test modifies fixture state and subsequent tests fail, change to `function` scope. If tests are slow due to repeated setup, use `session` or `module` scope.
+- **Missing fixture dependencies:** Fixture A depends on fixture B -- ensure B is defined in the same or a parent `conftest.py`. Fixtures cannot reference fixtures from sibling or child directories. Move shared fixtures up to a common ancestor `conftest.py`.
+- **Autouse fixture side effects:** `@pytest.fixture(autouse=True)` runs for ALL tests in its scope. Check if side effects (database state, environment variables, monkey-patches) interfere with specific tests. Consider narrowing the scope or making the fixture explicit.
+
+### Async/Await Bugs
+- **Missing `await`:** Forgetting `await` on an async function call returns a coroutine object instead of the result. Look for `<coroutine object ... at 0x...>` in error output or unexpected `TypeError` when the coroutine is used as a value.
+- **pytest-asyncio mode:** Configure `asyncio_mode = "auto"` in `pyproject.toml` or `pytest.ini` to automatically handle async tests. In `strict` mode, every async test needs `@pytest.mark.asyncio`. Check which mode the project uses before adding or removing markers.
+- **Mixing sync and async:** Do not call sync functions with `await` or async functions without `await`. Use `asyncio.to_thread()` for blocking calls in async context. Use `asyncio.run()` only at the top-level entry point, never inside an already-running event loop.
+- **Event loop already running:** In tests, do not manually create event loops with `asyncio.get_event_loop()` or `asyncio.run()`. Use `pytest-asyncio` fixtures (`event_loop`) instead. Nested `asyncio.run()` calls raise `RuntimeError: This event loop is already running`.
+
+### Pydantic v2 Migration
+- **Deprecated validators:** Replace `@root_validator` with `@model_validator(mode='before')` or `@model_validator(mode='after')`. Replace `@validator` with `@field_validator`. The new validators receive `FieldValidationInfo` instead of the model class as the first argument.
+- **Deprecated methods:** Replace `Model.parse_raw(data)` with `Model.model_validate_json(data)`. Replace `Model.parse_obj(data)` with `Model.model_validate(data)`. Replace `.dict()` with `.model_dump()` and `.json()` with `.model_dump_json()`.
+- **Field configuration:** Replace `Field(..., extra_key=value)` with `Field(..., json_schema_extra={"extra_key": value})`. Replace inner `class Config` with `model_config = ConfigDict(...)`. Import `ConfigDict` from `pydantic`.
+- **TypeError in validators:** In Pydantic v2, `TypeError` raised inside validators is NOT converted to `ValidationError`. If tests expect `ValidationError`, validators must catch `TypeError` and raise `ValueError` explicitly. This is a common silent breakage when migrating from v1.
+
+### Ruff Lint Patterns
+- **F401 unused imports:** Remove the unused import or use the imported symbol. For re-exports in `__init__.py`, add the name to `__all__` or use the `as` alias pattern (`import foo as foo`) to signal intentional re-export to ruff.
+- **I001 import sorting:** Ruff enforces isort-compatible import ordering (stdlib, third-party, local). Fix automatically with `ruff check --fix --select I .`. This is always safe to auto-fix. Check `pyproject.toml` for custom `[tool.ruff.isort]` settings.
+- **E501 line too long:** Break long lines using implicit string concatenation, parenthesized expressions, or intermediate variables. Check the project's configured line length in `pyproject.toml` under `[tool.ruff]` -- it may differ from the default 88 characters.
+- **N801/N802 naming conventions:** Class names should be UpperCamelCase (N801), function names should be lowercase_with_underscores (N802). Follow existing project convention if it intentionally diverges. Check `[tool.ruff.lint.per-file-ignores]` for files with exceptions.
 
 ## Output
 
