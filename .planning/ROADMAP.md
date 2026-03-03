@@ -24,7 +24,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Expand Python prompt + create ONBOARDING.md
+- [x] 03-01-PLAN.md — Expand Python prompt + create ONBOARDING.md
 - [ ] 03-02-PLAN.md — Enroll 8 repos (fbetancourtc + LiftitFinOps) with callers, secrets, smoke test
 - [ ] 03-03-PLAN.md — Prepare Liftitapp activation guide for 6 repos (pending admin)
 
@@ -45,5 +45,5 @@ Plans:
 | 2. Core Fix Loop | v1.0 | 3/3 | Complete | 2026-03-02 |
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
-| 3. Multi-Repo Rollout | v1.1 | 0/3 | Planned | - |
+| 3. Multi-Repo Rollout | v1.1 | 1/3 | In Progress | - |
 | 4. Promotion and Observability | v1.1 | 0/2 | Not started | - |
