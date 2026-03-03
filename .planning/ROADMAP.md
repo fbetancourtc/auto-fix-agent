@@ -21,7 +21,13 @@
 
 #### Phase 3: Multi-Repo Rollout
 **Goal:** Expand auto-fix to all 14 repos across 3 orgs — Python/Kotlin prompt expansion, thin caller onboarding template, and full enrollment with working auto-fix on each repo.
-**Plans:** 3
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Expand Python prompt + create ONBOARDING.md
+- [ ] 03-02-PLAN.md — Enroll 8 repos (fbetancourtc + LiftitFinOps) with callers, secrets, smoke test
+- [ ] 03-03-PLAN.md — Prepare Liftitapp activation guide for 6 repos (pending admin)
+
 **Dependencies:** v1.0 complete
 **Requirements:** Python stack-specific fix prompt, Kotlin stack-specific fix prompt, thin caller template with onboarding docs, all 14 repos enrolled with working auto-fix
 
@@ -39,5 +45,5 @@
 | 2. Core Fix Loop | v1.0 | 3/3 | Complete | 2026-03-02 |
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
-| 3. Multi-Repo Rollout | v1.1 | 0/3 | Not started | - |
+| 3. Multi-Repo Rollout | v1.1 | 0/3 | Planned | - |
 | 4. Promotion and Observability | v1.1 | 0/2 | Not started | - |
