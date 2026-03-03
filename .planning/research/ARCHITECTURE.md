@@ -1,532 +1,629 @@
-# Architecture Research
+# Architecture Research: v1.2 Monitoring & Observability
 
-**Domain:** Centralized self-healing CI/CD agent system (GitHub Actions + Claude Code)
-**Researched:** 2026-03-01
-**Confidence:** HIGH (GitHub official docs + Semaphore production patterns + Anthropic official action docs)
+**Domain:** Vercel serverless webhook receiver + Sentry monitoring integration for existing GitHub Actions CI/CD system
+**Researched:** 2026-03-03
+**Confidence:** HIGH (Vercel official docs, Sentry official docs, GitHub webhook docs, existing codebase analysis)
 
-## Standard Architecture
+## Existing Architecture (Context)
+
+Before introducing new components, here is what already exists:
+
+```
+EXISTING v1.1 ARCHITECTURE
+===========================
+
+Per-Repo Callers (14 repos)          Central Repo (auto-fix-agent)
+┌─────────────────────────┐          ┌──────────────────────────────────┐
+│ auto-fix-caller.yml     │─────────>│ auto-fix.yml (reusable workflow) │
+│ promote-caller.yml      │─────────>│ promote.yml  (reusable workflow) │
+│  (15 lines each)        │          │                                  │
+└─────────────────────────┘          │ scripts/                         │
+                                     │   sanitize-logs.sh               │
+CI fails -> workflow_run ->          │   validate-diff.sh               │
+  caller -> reusable workflow ->     │   record-metrics.sh              │
+    agent -> fix PR                  │   check-budget.sh                │
+                                     │   deploy-callers.sh              │
+                                     │                                  │
+                                     │ config/                          │
+                                     │   repo-stack-map.json            │
+                                     │   pricing.json                   │
+                                     │                                  │
+                                     │ metrics/                         │
+                                     │   runs.json   (append-only log)  │
+                                     │                                  │
+                                     │ prompts/                         │
+                                     │   typescript.md                  │
+                                     │   python.md                      │
+                                     │   kotlin.md                      │
+                                     └──────────────────────────────────┘
+```
+
+**Key characteristic:** Everything currently runs inside GitHub Actions. No server. Metrics are committed to a JSON file in the repo via git push. Budget alerts are GitHub Issues.
+
+## v1.2 Target Architecture
 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          EXTERNAL ERROR SOURCES                              │
-│  ┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐    │
-│  │  GitHub CI   │  │  Sentry Webhooks│  │  Firebase Crashlytics       │    │
-│  │  (workflow_  │  │  (production    │  │  (Android crash reports)    │    │
-│  │   run fail)  │  │   errors)       │  │                             │    │
-│  └──────┬───────┘  └────────┬────────┘  └──────────────┬──────────────┘    │
-└─────────┼───────────────────┼──────────────────────────┼───────────────────┘
-          │ workflow_run       │ HTTP POST webhook         │ HTTP POST webhook
-          │ (native GHA)       │                           │
-          ▼                   ▼                           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      CENTRAL REPO (auto-fix-agent)                           │
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         GITHUB EVENTS (sources)                              │
+│  ┌────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐     │
+│  │  workflow_run   │  │  pull_request     │  │  pull_request_review     │     │
+│  │  (completed)    │  │  (opened/closed/  │  │  (submitted)             │     │
+│  │                 │  │   merged)         │  │                          │     │
+│  └────────┬───────┘  └────────┬──────────┘  └──────────┬───────────────┘     │
+└───────────┼───────────────────┼────────────────────────┼─────────────────────┘
+            │                   │                        │
+            └───────────────────┼────────────────────────┘
+                                │ GitHub Webhook (HTTP POST)
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    VERCEL SERVERLESS FUNCTION (NEW)                           │
 │                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  WEBHOOK DISPATCHER  (.github/workflows/dispatcher.yml)              │   │
-│  │  - Receives repository_dispatch events from external monitors        │   │
-│  │  - Validates payloads, extracts: repo, branch, error_type, context  │   │
-│  │  - Routes to appropriate reusable fixer workflow                    │   │
-│  └──────────────────────────────┬───────────────────────────────────────┘   │
-│                                 │ calls                                      │
-│  ┌──────────────────────────────▼───────────────────────────────────────┐   │
-│  │  REUSABLE FIXER WORKFLOWS (.github/workflows/fix-*.yml)              │   │
-│  │                                                                      │   │
-│  │  fix-ci-failure.yml        — responds to workflow_run failures       │   │
-│  │  fix-sentry-error.yml      — responds to Sentry production errors   │   │
-│  │  fix-crashlytics.yml       — responds to Android crash reports      │   │
-│  │                                                                      │   │
-│  │  Each workflow:                                                       │   │
-│  │  1. Reads failure logs / error context                               │   │
-│  │  2. Invokes Claude Code Action with stack-specific prompt            │   │
-│  │  3. Opens fix PR on the CALLER repo                                  │   │
-│  │  4. Labels PR `auto-fix`, links to failure                          │   │
-│  │  5. Posts result to monitoring dashboard                             │   │
-│  └──────────────────────────────┬───────────────────────────────────────┘   │
-│                                 │ calls                                      │
-│  ┌──────────────────────────────▼───────────────────────────────────────┐   │
-│  │  SHARED RESOURCES (.github/prompts/, configs/)                       │   │
-│  │                                                                      │   │
-│  │  prompts/typescript-fix.md  — TypeScript/Next.js fix instructions   │   │
-│  │  prompts/python-fix.md      — FastAPI/Python fix instructions       │   │
-│  │  prompts/kotlin-fix.md      — Kotlin/Android fix instructions       │   │
-│  │  prompts/base-system.md     — Common agent behavior rules           │   │
-│  │  configs/stack-detection.yml — Maps repo names to stack types       │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │ cross-org workflow_call (public repo OR enterprise)
-          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CALLER REPOS (14 repos, 3 orgs)                          │
+│  api/webhook.ts                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  1. Verify X-Hub-Signature-256 (HMAC-SHA256)                          │  │
+│  │  2. Parse X-GitHub-Event header -> route to handler                   │  │
+│  │  3. Extract structured data from payload                              │  │
+│  │  4. Emit to Sentry (spans, metrics, check-ins)                        │  │
+│  │  5. Return 200 OK                                                     │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  THIN CALLER (~15 lines, .github/workflows/auto-fix.yml)             │   │
-│  │                                                                      │   │
-│  │  on:                                                                 │   │
-│  │    workflow_run:                                                     │   │
-│  │      workflows: ["CI"]                                               │   │
-│  │      types: [completed]                                              │   │
-│  │  jobs:                                                               │   │
-│  │    auto-fix:                                                         │   │
-│  │      if: github.event.workflow_run.conclusion == 'failure'          │   │
-│  │      uses: auto-fix-agent/.github/workflows/fix-ci-failure.yml@v1  │   │
-│  │      secrets: inherit                                               │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  api/_lib/                     (underscore = not a route)                    │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
+│  │  verify.ts   │ │  sentry.ts   │ │  handlers.ts │ │  types.ts    │       │
+│  │  (HMAC       │ │  (init +     │ │  (event      │ │  (GitHub     │       │
+│  │   verify)    │ │   helpers)   │ │   routing)   │ │   payloads)  │       │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘       │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │ Sentry SDK calls
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         SENTRY (SaaS)                                        │
 │                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  PR PROMOTION CALLER (.github/workflows/promote.yml)                 │   │
-│  │                                                                      │   │
-│  │  on:                                                                 │   │
-│  │    pull_request:                                                     │   │
-│  │      types: [closed]         # triggers when auto-fix PR merges     │   │
-│  │      branches: [develop]                                            │   │
-│  │  jobs:                                                               │   │
-│  │    promote:                                                          │   │
-│  │      uses: auto-fix-agent/.github/workflows/promote-pr.yml@v1      │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │ PR creation (via GitHub App token)
-          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         PR PROMOTION PIPELINE                                │
-│                                                                              │
-│  [auto-fix PR] → [human review] → [merge to develop]                       │
-│       ↓                                                                      │
-│  [auto-create PR: develop → qa]  — triggered on close                      │
-│       ↓                                                                      │
-│  [human approval gate]  ← NON-NEGOTIABLE                                   │
-│       ↓                                                                      │
-│  [merge to main]                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │  Spans /     │  │  Custom     │  │  Cron        │  │  Alerts     │       │
+│  │  Tracing     │  │  Metrics    │  │  Monitors    │  │             │       │
+│  │  (per-run)   │  │  (counters, │  │  (per-repo   │  │  (budget,   │       │
+│  │              │  │   gauges)   │  │   heartbeat) │  │   failures) │       │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘       │
+│         └────────────────┼────────────────┼────────────────┘               │
+│                          ▼                ▼                                 │
+│                    ┌───────────────────────────┐                            │
+│                    │  Sentry Dashboard          │                            │
+│                    │  - Operations health       │                            │
+│                    │  - Value metrics           │                            │
+│                    │  - Safety signals          │                            │
+│                    │  - Artifact tracking       │                            │
+│                    └───────────────────────────┘                            │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### What Changes, What Stays
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `auto-fix.yml` | **UNCHANGED** | Continues to run fixes. No modification needed. |
+| `promote.yml` | **UNCHANGED** | Continues to handle promotion. No modification needed. |
+| Per-repo callers | **UNCHANGED** | Continue to trigger workflows. |
+| `scripts/*.sh` | **UNCHANGED** | Bash scripts continue working. |
+| `config/*.json` | **UNCHANGED** | repo-stack-map.json and pricing.json stay as-is. |
+| `metrics/runs.json` | **UNCHANGED** | Git-committed metrics log stays (cheap backup). |
+| `api/webhook.ts` | **NEW** | Vercel serverless function receiving GitHub webhooks. |
+| `api/_lib/*.ts` | **NEW** | Shared utilities for the webhook handler. |
+| `vercel.json` | **NEW** | Vercel project configuration. |
+| `package.json` | **NEW** | Node.js dependencies for the Vercel function. |
+| `tsconfig.json` | **NEW** | TypeScript configuration for api/ code. |
+| GitHub Webhook config | **NEW** | Org-level webhooks pointing to Vercel URL. |
+| Sentry project | **NEW** | Sentry project + DSN for the auto-fix-agent. |
+
+**Critical design decision:** The Vercel function is a **passive observer**. It receives the same GitHub events that already trigger the existing workflows but does NOT interfere with them. The existing GitHub Actions pipeline is the source of truth for execution; the Vercel function is the source of truth for observability.
 
 ### Component Responsibilities
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| Webhook Dispatcher | Receives external errors, normalizes payload, routes to fixer | GitHub Actions workflow with `repository_dispatch` trigger |
-| CI Failure Listener | Detects failed workflow runs in caller repos | `workflow_run` trigger with `conclusion == 'failure'` condition |
-| Reusable Fixer Workflows | Orchestrates the fix cycle: log retrieval → agent → PR | Reusable GitHub Actions workflows in central repo |
-| Claude Code Action | Reads logs, searches codebase, implements fix, runs tests | `anthropics/claude-code-action@v1` with stack-specific `prompt` |
-| Prompt Library | Stack-specific fix instructions and agent behavior rules | Markdown files in `.github/prompts/` of central repo |
-| PR Promotion Workflow | Auto-creates develop → qa PR when auto-fix merges | Reusable workflow triggered on `pull_request: closed` |
-| External Webhook Bridge | Translates Sentry/Crashlytics events into `repository_dispatch` | Serverless function (AWS Lambda / Vercel Edge Function) OR GitHub webhook forwarding |
-| Retry Guard | Prevents infinite fix loops, escalates on exhaustion | Workflow-level counter via PR labels (`auto-fix-attempt-1`, `auto-fix-attempt-2`) |
-| Monitoring Dashboard | Tracks success rate, cost per fix, escalation rate | GitHub Actions summary + optional Supabase table |
+| Component | Responsibility | Implementation |
+|-----------|----------------|----------------|
+| `api/webhook.ts` | HTTP endpoint, signature verification, event routing | Vercel serverless function (TypeScript) |
+| `api/_lib/verify.ts` | HMAC-SHA256 signature verification of GitHub payloads | `crypto.timingSafeEqual` with `X-Hub-Signature-256` |
+| `api/_lib/sentry.ts` | Sentry SDK initialization and metric/span/check-in helpers | `@sentry/node` init + wrapper functions |
+| `api/_lib/handlers.ts` | Per-event-type processing logic | Maps GitHub event types to Sentry telemetry |
+| `api/_lib/types.ts` | TypeScript interfaces for GitHub webhook payloads | Typed payloads for `workflow_run`, `pull_request`, `pull_request_review` |
+| Sentry Dashboard | Visualization of all monitoring data | Configured via Sentry web UI |
 
 ## Recommended Project Structure
 
 ```
-auto-fix-agent/                       # Central repo (public or enterprise-internal)
+auto-fix-agent/
 ├── .github/
 │   └── workflows/
-│       ├── fix-ci-failure.yml        # Reusable: triggered by workflow_run failure
-│       ├── fix-sentry-error.yml      # Reusable: triggered by Sentry repository_dispatch
-│       ├── fix-crashlytics.yml       # Reusable: triggered by Crashlytics repository_dispatch
-│       ├── promote-pr.yml            # Reusable: develop → qa PR auto-creation
-│       └── dispatcher.yml            # Routes repository_dispatch to correct fixer
-├── prompts/
-│   ├── base-system.md                # Common rules: scope, retry, PR format
-│   ├── typescript-fix.md             # TS/Next.js/React context + common failure patterns
-│   ├── python-fix.md                 # FastAPI/pytest context + common failure patterns
-│   └── kotlin-fix.md                 # Kotlin/Android/ktlint context + common patterns
-├── configs/
-│   ├── stack-detection.yml           # Maps repo → stack type (used by dispatcher)
-│   └── escalation-contacts.yml      # Who gets notified on retry exhaustion
-├── scripts/
-│   ├── webhook-bridge/               # Serverless function for Sentry → repository_dispatch
-│   │   ├── handler.py                # Validates signature, calls GitHub API
-│   │   └── vercel.json / serverless.yml
-│   └── setup-caller.sh              # Script to add caller workflow to a new repo
-├── examples/
-│   ├── caller-auto-fix.yml          # Template: thin caller for CI auto-fix
-│   ├── caller-promote.yml           # Template: thin caller for PR promotion
-│   └── CLAUDE.md.template           # Template CLAUDE.md for caller repos
-└── docs/
-    ├── onboarding.md                 # How to add a new repo to the system
-    └── runbook.md                    # Ops guide: escalation, cost monitoring
+│       ├── auto-fix.yml                  # EXISTING - unchanged
+│       ├── promote.yml                   # EXISTING - unchanged
+│       ├── auto-fix-caller.example.yml   # EXISTING - unchanged
+│       └── promote-caller.example.yml    # EXISTING - unchanged
+├── api/                                  # NEW - Vercel serverless functions
+│   ├── webhook.ts                        # Main webhook endpoint
+│   └── _lib/                             # Shared code (underscore = not a route)
+│       ├── verify.ts                     # GitHub HMAC signature verification
+│       ├── sentry.ts                     # Sentry init + telemetry helpers
+│       ├── handlers.ts                   # Event-type routing and processing
+│       ├── types.ts                      # TypeScript interfaces for payloads
+│       └── config.ts                     # Maps repo-stack-map data + constants
+├── config/                               # EXISTING - unchanged
+│   ├── repo-stack-map.json
+│   └── pricing.json
+├── metrics/                              # EXISTING - unchanged
+│   └── runs.json
+├── prompts/                              # EXISTING - unchanged
+│   ├── typescript.md
+│   ├── python.md
+│   └── kotlin.md
+├── scripts/                              # EXISTING - unchanged
+│   ├── sanitize-logs.sh
+│   ├── validate-diff.sh
+│   ├── record-metrics.sh
+│   ├── check-budget.sh
+│   └── deploy-callers.sh
+├── package.json                          # NEW - Vercel function dependencies
+├── tsconfig.json                         # NEW - TypeScript config for api/
+├── vercel.json                           # NEW - Vercel deployment config
+├── ONBOARDING.md                         # EXISTING - unchanged
+└── README.md                             # EXISTING - update with monitoring section
 ```
 
 ### Structure Rationale
 
-- **`.github/workflows/`:** All reusable workflows live here because GitHub requires `workflow_call` workflows to be in `.github/workflows/` of the called repo.
-- **`prompts/`:** Separated from workflows so prompts can be iterated without touching workflow logic. Passed to the action via `--append-system-prompt`.
-- **`configs/`:** Declarative stack detection avoids hard-coding repo names inside workflows. Dispatcher reads this to select the right prompt.
-- **`scripts/webhook-bridge/`:** The bridge between Sentry/Crashlytics and GitHub's `repository_dispatch` API. Small and stateless — a single HTTP handler.
-- **`examples/`:** Copy-paste starting points for onboarding new repos. The `setup-caller.sh` script automates this.
+- **`api/` at root:** Vercel convention. Every `.ts` file in `api/` becomes a route. Only `webhook.ts` should be a route.
+- **`api/_lib/` with underscore prefix:** Vercel ignores underscore-prefixed directories for route generation. This keeps shared code co-located with the function without creating extra endpoints.
+- **No framework (no Next.js):** The webhook receiver is a single endpoint. Adding Next.js would introduce unnecessary complexity. Plain Vercel serverless functions with `@vercel/node` types are sufficient.
+- **Existing directories untouched:** The `scripts/`, `config/`, `metrics/`, `prompts/` directories continue working exactly as before. The Vercel function is additive.
 
 ## Architectural Patterns
 
-### Pattern 1: Hub-and-Spoke Reusable Workflows
+### Pattern 1: Passive Observer (Event Tap)
 
-**What:** One central repo hosts all reusable workflows. Each of the 14 caller repos has a thin 15-line workflow that delegates to the hub via `uses: org/central-repo/.github/workflows/fix.yml@v1`.
+**What:** The Vercel webhook function observes the same GitHub events that trigger the existing workflows but takes no action that affects the pipeline. It is a read-only tap on the event stream.
 
-**When to use:** When maintaining N nearly-identical workflows across repos. Any change to fix logic propagates to all callers by updating the hub — callers pin to a version tag.
+**When to use:** When adding observability to an existing system without risking disruption to the working pipeline.
 
-**Trade-offs:** Centralization is powerful but requires the hub to be either public (works across orgs) or in an enterprise account with internal visibility. Cross-org access for private central repos requires a GitHub Enterprise plan or making the central repo public.
+**Trade-offs:**
+- Pro: Zero risk to existing auto-fix pipeline. Can be deployed, broken, or taken down without affecting fixes.
+- Pro: Can be developed and tested independently.
+- Con: Slight data duplication (metrics in both `runs.json` and Sentry).
+- Con: Cannot observe data internal to the workflow (e.g., token counts, agent execution details) -- only what GitHub exposes in webhook payloads.
 
 **Example:**
-```yaml
-# In caller repo: .github/workflows/auto-fix.yml
-on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+```typescript
+// api/webhook.ts - passive observer pattern
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifySignature } from './_lib/verify';
+import { handleEvent } from './_lib/handlers';
 
-jobs:
-  auto-fix:
-    if: github.event.workflow_run.conclusion == 'failure'
-    uses: liftitapp/auto-fix-agent/.github/workflows/fix-ci-failure.yml@v1
-    with:
-      repo: ${{ github.repository }}
-      branch: ${{ github.event.workflow_run.head_branch }}
-      run_id: ${{ github.event.workflow_run.id }}
-    secrets:
-      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-      github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Verify GitHub webhook signature
+  const isValid = verifySignature(req);
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const event = req.headers['x-github-event'] as string;
+  const payload = req.body;
+
+  // Process event (emit to Sentry) -- never modify GitHub state
+  await handleEvent(event, payload);
+
+  // Always return 200 quickly -- GitHub retries on non-2xx
+  return res.status(200).json({ received: true });
+}
 ```
 
-### Pattern 2: Repository Dispatch as Universal Event Bus
+### Pattern 2: Event-to-Telemetry Mapping
 
-**What:** External systems (Sentry, Crashlytics, custom monitors) cannot trigger GitHub Actions directly via `workflow_run`. Instead, a lightweight webhook bridge function translates external webhooks into GitHub `repository_dispatch` events, which can trigger any workflow in the central repo.
+**What:** Each GitHub webhook event type maps to specific Sentry telemetry types. The mapping is explicit and exhaustive.
 
-**When to use:** Whenever an error source lives outside GitHub (production monitoring, crash reporting, custom health checks).
+**When to use:** When translating domain events into observability signals.
 
-**Trade-offs:** Requires deploying a stateless bridge function (Vercel Edge, AWS Lambda, or Cloudflare Worker — all free tier friendly for this volume). Bridge must verify webhook signatures from source systems to prevent spoofing.
+**Trade-offs:**
+- Pro: Clear, testable mapping from input events to output telemetry.
+- Pro: Easy to extend with new event types.
+- Con: Requires understanding both the GitHub webhook payload schema and Sentry's telemetry APIs.
+
+**Event-to-Telemetry Map:**
+
+| GitHub Event | Action/Condition | Sentry Telemetry | Metric/Monitor Name |
+|-------------|------------------|-------------------|---------------------|
+| `workflow_run` | `completed` + conclusion `failure` + auto-fix caller | `Sentry.startSpan` | `auto-fix.run` |
+| `workflow_run` | `completed` + conclusion `success` + auto-fix caller | `Sentry.metrics.count` | `auto-fix.fix.success` |
+| `workflow_run` | `completed` + conclusion `failure` + auto-fix caller | `Sentry.metrics.count` | `auto-fix.fix.failure` |
+| `workflow_run` | any auto-fix run | `Sentry.captureCheckIn` | `auto-fix.{repo-slug}` (cron monitor) |
+| `pull_request` | `opened` + label `auto-fix` | `Sentry.metrics.count` | `auto-fix.pr.opened` |
+| `pull_request` | `closed` + merged + label `auto-fix` | `Sentry.metrics.count` | `auto-fix.pr.accepted` |
+| `pull_request` | `closed` + NOT merged + label `auto-fix` | `Sentry.metrics.count` | `auto-fix.pr.rejected` |
+| `pull_request_review` | `submitted` + state `changes_requested` | `Sentry.metrics.count` | `auto-fix.pr.changes_requested` |
+| `pull_request_review` | `submitted` + state `approved` | `Sentry.metrics.count` | `auto-fix.pr.approved` |
 
 **Example:**
-```python
-# scripts/webhook-bridge/handler.py
-import hmac, hashlib, json
-from github import Github
+```typescript
+// api/_lib/handlers.ts
+import * as Sentry from '@sentry/node';
 
-def handle_sentry_webhook(request):
-    # 1. Verify Sentry-Hook-Signature header
-    sig = request.headers.get("Sentry-Hook-Signature")
-    body = request.body
-    expected = hmac.new(SENTRY_SECRET.encode(), body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, expected):
-        return 401
+export async function handleEvent(event: string, payload: any): Promise<void> {
+  switch (event) {
+    case 'workflow_run':
+      return handleWorkflowRun(payload);
+    case 'pull_request':
+      return handlePullRequest(payload);
+    case 'pull_request_review':
+      return handlePullRequestReview(payload);
+    default:
+      // Ignore events we don't care about
+      return;
+  }
+}
 
-    # 2. Parse error data
-    payload = json.loads(body)
-    repo = map_dsn_to_repo(payload["project"]["slug"])
+function handleWorkflowRun(payload: WorkflowRunPayload): void {
+  // Only process auto-fix workflow runs
+  if (!isAutoFixRun(payload)) return;
 
-    # 3. Fire repository_dispatch to central repo
-    g = Github(GITHUB_TOKEN)
-    central = g.get_repo("liftitapp/auto-fix-agent")
-    central.create_repository_dispatch(
-        event_type="sentry-error",
-        client_payload={
-            "repo": repo,
-            "error_type": payload["level"],
-            "title": payload["message"],
-            "url": payload["url"],
-        }
-    )
+  const repo = payload.repository.full_name;
+  const conclusion = payload.workflow_run.conclusion;
+  const runId = payload.workflow_run.id;
+
+  // Span for the entire run
+  Sentry.startSpan(
+    {
+      name: `auto-fix.run`,
+      op: 'auto-fix.workflow',
+      attributes: {
+        'repo': repo,
+        'run_id': String(runId),
+        'conclusion': conclusion,
+        'branch': payload.workflow_run.head_branch,
+      },
+    },
+    () => {
+      // Counters
+      if (conclusion === 'success') {
+        Sentry.metrics.count('auto-fix.fix.success', 1, {
+          attributes: { repo },
+        });
+      } else {
+        Sentry.metrics.count('auto-fix.fix.failure', 1, {
+          attributes: { repo },
+        });
+      }
+    }
+  );
+
+  // Cron check-in for repo health monitoring
+  Sentry.captureCheckIn({
+    monitorSlug: `auto-fix-${slugify(repo)}`,
+    status: conclusion === 'success' ? 'ok' : 'error',
+  });
+}
 ```
 
-### Pattern 3: Retry Guard via PR Label Counter
+### Pattern 3: Signature-First Security Gate
 
-**What:** Track how many auto-fix attempts have been made for a given failure using PR labels (`auto-fix-attempt-1`, `auto-fix-attempt-2`). When a label for attempt 2 already exists, escalate to a human rather than creating a third PR.
+**What:** Every incoming request is verified against the `X-Hub-Signature-256` header using HMAC-SHA256 with a shared secret before any processing occurs.
 
-**When to use:** Required to prevent runaway API costs and infinite fix loops. The 2-retry limit from the project requirements maps directly to this pattern.
+**When to use:** Always, for any webhook receiver exposed to the public internet.
 
-**Trade-offs:** Label-based state is simple but only tracks per-PR. If the branch is deleted and recreated, the counter resets. For this project scale (14 repos, ~150 employees), this is acceptable.
-
-**Example:**
-```yaml
-# In fix-ci-failure.yml
-- name: Check retry count
-  id: retry-check
-  run: |
-    ATTEMPTS=$(gh pr list --repo $REPO --label "auto-fix" \
-      --search "head:$BRANCH" --json labels \
-      | jq '[.[].labels[].name | select(startswith("auto-fix-attempt-"))] | length')
-    echo "attempts=$ATTEMPTS" >> $GITHUB_OUTPUT
-
-- name: Escalate if exhausted
-  if: steps.retry-check.outputs.attempts >= 2
-  run: |
-    gh issue create --repo $REPO \
-      --title "Auto-fix exhausted for: $FAILURE_TITLE" \
-      --label "needs-human" \
-      --body "Auto-fix failed after 2 attempts. Manual investigation required."
-    exit 0  # Stop workflow without failing
-
-- name: Run Claude fix
-  if: steps.retry-check.outputs.attempts < 2
-  uses: anthropics/claude-code-action@v1
-  with:
-    prompt: ...
-```
-
-### Pattern 4: Staged PR Promotion (develop → qa → main)
-
-**What:** When an auto-fix PR is merged to `develop`, a separate workflow automatically creates a PR from `develop` to `qa`. The `qa → main` promotion requires explicit human approval — no automation crosses this gate.
-
-**When to use:** Any multi-environment branch strategy where you want automation to handle the bookkeeping of promotion PRs but humans to own production gates.
-
-**Trade-offs:** Requires a GitHub App token (not GITHUB_TOKEN) because PRs created by GITHUB_TOKEN do not trigger downstream workflows (this is a GitHub security design). The GitHub App token is treated as a real user action and does trigger CI.
+**Trade-offs:**
+- Pro: Prevents unauthorized payloads from being processed.
+- Pro: Standard GitHub security pattern, well-documented.
+- Con: Requires raw body access (Vercel provides this via `req.body` when content-type is `application/json`).
 
 **Example:**
-```yaml
-# promote-pr.yml (reusable)
-on:
-  workflow_call:
-    inputs:
-      source_branch: { type: string, default: develop }
-      target_branch: { type: string, default: qa }
+```typescript
+// api/_lib/verify.ts
+import crypto from 'crypto';
+import type { VercelRequest } from '@vercel/node';
 
-jobs:
-  create-promotion-pr:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          repositories: ${{ inputs.caller_repo }}
+const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
-      - name: Create promotion PR
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh pr create \
-            --repo ${{ inputs.caller_repo }} \
-            --head ${{ inputs.source_branch }} \
-            --base ${{ inputs.target_branch }} \
-            --title "chore: promote auto-fix from develop to qa" \
-            --label "auto-promotion" \
-            --body "Automated promotion. Review the merged auto-fix before approving."
+export function verifySignature(req: VercelRequest): boolean {
+  if (!WEBHOOK_SECRET) {
+    console.error('GITHUB_WEBHOOK_SECRET not configured');
+    return false;
+  }
+
+  const signature = req.headers['x-hub-signature-256'] as string;
+  if (!signature) return false;
+
+  const body = JSON.stringify(req.body);
+  const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
+  const digest = `sha256=${hmac.update(body).digest('hex')}`;
+
+  // Constant-time comparison to prevent timing attacks
+  const sig = Buffer.from(signature, 'utf8');
+  const dig = Buffer.from(digest, 'utf8');
+
+  if (sig.length !== dig.length) return false;
+  return crypto.timingSafeEqual(sig, dig);
+}
 ```
 
 ## Data Flow
 
-### CI Failure Auto-Fix Flow
+### Complete Event Flow (v1.2)
 
 ```
-[Caller Repo CI fails]
-         |
-         | workflow_run event (conclusion: failure)
-         v
-[Caller: auto-fix.yml]
-    - if: conclusion == failure
-         |
-         | uses: central/.github/workflows/fix-ci-failure.yml@v1
-         v
-[Central: fix-ci-failure.yml]
-    1. Download failure logs (gh run view --log-failed)
-    2. Check retry counter (PR labels)
-    3a. If retries >= 2 → create escalation issue → EXIT
-    3b. If retries < 2 → continue
-         |
-         | invokes
-         v
-[Claude Code Action (anthropics/claude-code-action@v1)]
-    - Checks out caller repo code
-    - Reads failure logs as context
-    - Applies stack-specific prompt (typescript/python/kotlin)
-    - Searches codebase for root cause
-    - Implements fix
-    - Runs tests locally to verify
-         |
-         | creates PR on caller repo
-         v
-[PR on Caller Repo]
-    - labeled: auto-fix, auto-fix-attempt-N
-    - body: failure summary + Claude explanation
-    - targets: failed branch (not develop directly)
-         |
-         | human reviews and merges
-         v
-[PR merged to develop]
-         |
-         | pull_request closed event
-         v
-[Caller: promote.yml]
-    - uses: central/promote-pr.yml@v1
-         |
-         v
-[Auto-created PR: develop → qa]
-         |
-         | human approves
-         v
-[qa → main PR] (human-created or manually promoted)
-```
-
-### External Error (Sentry) Fix Flow
-
-```
-[Production error in Sentry]
-         |
-         | HTTP POST (Sentry webhook)
-         v
-[Webhook Bridge Function]
-    - Validates Sentry-Hook-Signature
-    - Maps project slug → GitHub repo
-    - Extracts: error title, stack trace, url
-         |
-         | POST /repos/auto-fix-agent/dispatches
-         | event_type: sentry-error
-         | client_payload: {repo, error, stack_trace}
-         v
-[Central: dispatcher.yml]
-    - Reads client_payload
-    - Routes to fix-sentry-error.yml
-         |
-         v
-[Central: fix-sentry-error.yml]
-    - Fetches additional Sentry context (Seer analysis if available)
-    - Invokes Claude Code Action with production error prompt
-    - Creates fix PR on the affected repo
-         |
-         v
-[PR on Affected Repo] → same promotion flow as above
+CI Failure on Repo X
+    |
+    ├──[existing path]──────────────────────────────────────────────────┐
+    │                                                                    │
+    ▼                                                                    │
+workflow_run event                                                       │
+    |                                                                    │
+    ├──> Per-repo auto-fix-caller.yml                                   │
+    │         |                                                          │
+    │         └──> auto-fix.yml (central reusable)                      │
+    │               ├── Circuit breaker                                 │
+    │               ├── Flakiness filter                                │
+    │               ├── Log sanitization                                │
+    │               ├── Claude Code Action (agent)                      │
+    │               ├── Diff validation                                 │
+    │               ├── Fix PR creation                                 │
+    │               └── record-metrics.sh -> metrics/runs.json          │
+    │                                                                    │
+    ├──[NEW path]───────────────────────────────────────────────────────┐
+    │                                                                    │
+    ▼                                                                    │
+GitHub Webhook (org-level)                                               │
+    |                                                                    │
+    └──> Vercel: api/webhook.ts                                         │
+           ├── Verify HMAC signature                                    │
+           ├── Route by X-GitHub-Event                                  │
+           └── Emit to Sentry:                                          │
+                ├── Span: auto-fix.run (timing, outcome)                │
+                ├── Metric: fix.success / fix.failure counter           │
+                ├── Check-in: per-repo cron monitor                     │
+                └── Attributes: repo, branch, run_id, conclusion       │
+                                                                        │
+                                                                        │
+Fix PR Opened / Merged / Rejected                                       │
+    |                                                                    │
+    ├──[existing path]──> promote-caller.yml -> promote.yml             │
+    │                                                                    │
+    ├──[NEW path]───────> Vercel: api/webhook.ts                        │
+           ├── Verify HMAC signature                                    │
+           ├── Route: pull_request / pull_request_review                │
+           └── Emit to Sentry:                                          │
+                ├── Metric: pr.opened / pr.accepted / pr.rejected       │
+                ├── Metric: pr.approved / pr.changes_requested          │
+                └── Attributes: repo, pr_number, labels, author         │
 ```
 
 ### Key Data Flows
 
-1. **Failure context propagation:** Log data travels from the failed CI run → downloaded by the central workflow → injected as context into the Claude Code Action prompt. The action itself checks out the caller repo code, so Claude reads actual source.
+1. **Operations health flow:** `workflow_run.completed` -> webhook -> Sentry span + counters -> Dashboard "trigger frequency", "fix outcome distribution"
+2. **Value metrics flow:** `pull_request.closed(merged)` with `auto-fix` label -> webhook -> Sentry counter `pr.accepted` -> Dashboard "PR acceptance rate"
+3. **Safety monitoring flow:** `workflow_run` cost data (from run timing, estimated) -> webhook -> Sentry gauge -> Dashboard "budget burn rate"
+4. **Repo health flow:** `workflow_run` per-repo -> webhook -> Sentry cron check-in -> Dashboard "repo health score" (based on fix success rate over time)
+5. **Artifact flow:** `pull_request` lifecycle events -> webhook -> Sentry counters for each state transition -> Dashboard "PR lifecycle tracking"
 
-2. **Cross-org authentication:** GitHub App generates short-lived installation tokens at workflow runtime. The App is installed on all 3 orgs. Tokens are scoped to the specific caller repo for each run — no broad standing credentials.
+### What the Webhook CANNOT Observe
 
-3. **Prompt selection:** The dispatcher reads `configs/stack-detection.yml` to map repo name to stack type, then passes the correct prompt file path as a workflow input to the fixer workflow.
+The webhook receives GitHub event payloads, which do NOT include:
+- **Token usage / cost data:** This is internal to the Claude API call inside the workflow. The `record-metrics.sh` script captures this into `runs.json`, but it is not in the webhook payload.
+- **Agent reasoning / turn count:** Internal to Claude Code Action.
+- **Diff validation results:** Internal to the workflow step.
 
-4. **Result tracking:** Each completed run posts a summary to GitHub Actions job summary (visible in the Actions tab). Optionally, a final step writes a row to a tracking store (GitHub Issues as a log, or Supabase table) for dashboard aggregation.
-
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1-14 repos (current) | Single central repo, workflow_run polling, in-memory retry tracking via labels |
-| 15-50 repos | Add queueing: multiple `workflow_run` events can pile up; consider a dispatch queue table to rate-limit Claude calls and stay within Anthropic API rate limits |
-| 50+ repos | Dedicated webhook bridge service (not serverless), persistent job queue (Redis/pg), separate metrics store |
-
-### Scaling Priorities
-
-1. **First bottleneck:** Anthropic API rate limits. At 14 repos with bursts of CI failures, concurrent Claude runs could hit rate limits. Mitigation: add a concurrency group to the central workflow (`concurrency: auto-fix-${{ inputs.repo }}-${{ inputs.branch }}`) to serialize per-repo.
-
-2. **Second bottleneck:** GitHub Actions minutes. Each Claude fix run takes 5-15 minutes. At 14 repos with daily failures, this stays well within free/team tier limits.
-
-3. **Cost control:** Anthropic API is the primary cost driver (~$0.50-5.00 per run). The 2-retry max cap and scope restriction to source code only (no broad exploration) are the primary cost controls.
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Agent Fixes CI Workflow Files
-
-**What people do:** Allow Claude Code Action to modify `.github/workflows/` files when CI fails.
-
-**Why it's wrong:** If CI fails because of a misconfiguration, the agent will patch the workflow — potentially disabling checks, relaxing coverage thresholds, or creating security holes. Workflow files are infrastructure, not application code.
-
-**Do this instead:** Restrict the agent's `--disallowedTools` or explicitly instruct in the system prompt: "You are forbidden from modifying any files in .github/, .env, *.env, secrets, or CI configuration files." The project already lists this as out of scope.
-
-### Anti-Pattern 2: Using GITHUB_TOKEN for Cross-Repo PR Creation
-
-**What people do:** Pass `${{ secrets.GITHUB_TOKEN }}` to create PRs in caller repos from the central workflow.
-
-**Why it's wrong:** `GITHUB_TOKEN` is scoped to the workflow's repo (the central repo), not the caller repo. PR creation will fail with a 403. Even if it somehow worked, PRs created by `GITHUB_TOKEN` do not trigger downstream workflows (CI won't run on the auto-fix PR).
-
-**Do this instead:** Install a GitHub App across all 3 orgs and generate per-repo installation tokens at runtime using `actions/create-github-app-token@v2`. This is the official pattern for cross-repo automation.
-
-### Anti-Pattern 3: Embedding Prompts Inside Workflow YAML
-
-**What people do:** Write the full Claude prompt as a multi-line string inside the workflow YAML file.
-
-**Why it's wrong:** Prompts need to evolve independently from workflow logic. Mixing them creates large, unreadable YAML, makes prompt iteration require workflow file changes (triggering re-review), and prevents reuse across multiple workflows.
-
-**Do this instead:** Store prompts in `prompts/*.md` files. Pass them to the action via `--append-system-prompt "$(cat prompts/typescript-fix.md)"`. This separates concerns and allows A/B testing prompts without touching workflow files.
-
-### Anti-Pattern 4: Infinite Fix Loops Without Retry Guard
-
-**What people do:** Trigger auto-fix on every CI failure without tracking attempt counts. The agent creates a PR, human closes it without merging, CI fails again, agent creates another PR.
-
-**Why it's wrong:** This produces unbounded API costs, clutters the PR list with duplicate auto-fix PRs, and creates a confusing developer experience.
-
-**Do this instead:** Implement the retry guard pattern (Pattern 3 above). After 2 attempts, stop creating PRs and open a human-escalation issue instead. Label auto-fix PRs with `auto-fix-attempt-N` so the guard can count them even if the previous PR was closed.
-
-### Anti-Pattern 5: Single Monolithic Workflow for All Error Types
-
-**What people do:** Create one giant workflow that handles CI failures, Sentry errors, and Crashlytics crashes with long if/else chains.
-
-**Why it's wrong:** Different error sources have different context shapes, different diagnostic approaches, and different prompt requirements. A monolithic workflow becomes unmaintainable and harder to test.
-
-**Do this instead:** Separate reusable workflows per error type (`fix-ci-failure.yml`, `fix-sentry-error.yml`, `fix-crashlytics.yml`) sharing common helper steps via composite actions or a shared base prompt. Use the dispatcher workflow for routing.
+**Implication:** For cost-per-fix and token metrics, the Sentry dashboard will need to use estimated values based on run duration, or a future enhancement could have `record-metrics.sh` call a second Vercel endpoint to push cost data directly. This is a known gap for v1.2.
 
 ## Integration Points
 
 ### External Services
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Anthropic Claude API | `anthropics/claude-code-action@v1` in reusable workflow | `ANTHROPIC_API_KEY` stored as org secret on central repo; passed via `secrets: inherit` |
-| GitHub (cross-org PRs) | GitHub App with per-repo installation tokens | App must be installed on all 3 orgs (liftitapp, fbetancourtc, LiftitFinOps) |
-| Sentry | Sentry webhook → Bridge Function → `repository_dispatch` | Requires Sentry Team plan ($26/mo) for webhook integrations |
-| Firebase Crashlytics | Crashlytics alert → Bridge Function → `repository_dispatch` | Crashlytics REST API or email-to-webhook forwarding as alternative |
-| GitHub Actions (caller CI) | `workflow_run` trigger on `conclusion: failure` | Native, no extra service needed |
+| Service | Integration Pattern | Secrets Required | Notes |
+|---------|---------------------|------------------|-------|
+| GitHub (webhooks) | Org-level webhook -> Vercel URL | `GITHUB_WEBHOOK_SECRET` (shared secret) | Configure on github.com/organizations/settings/hooks |
+| Sentry | `@sentry/node` SDK calls from webhook handler | `SENTRY_DSN` | Create project in Sentry dashboard first |
+| Vercel | Deploy `api/` directory as serverless functions | Vercel account + project link | Connect repo to Vercel for auto-deploy |
+
+### GitHub Webhook Configuration
+
+Three organization-level webhooks (fbetancourtc, LiftitFinOps, Liftitapp) pointing to the same Vercel endpoint:
+
+| Setting | Value |
+|---------|-------|
+| Payload URL | `https://auto-fix-agent.vercel.app/api/webhook` |
+| Content type | `application/json` |
+| Secret | Shared HMAC secret (stored in Vercel env vars) |
+| Events | `workflow_run`, `pull_request`, `pull_request_review` |
+| Active | Yes |
+
+**Alternative:** Repository-level webhooks on each of the 14 repos. This is more granular but requires 14x configuration. Org-level is preferred -- fewer webhooks to manage, and the handler already filters by repo using `repo-stack-map.json`.
+
+### Vercel Environment Variables
+
+| Variable | Purpose | Environment |
+|----------|---------|-------------|
+| `GITHUB_WEBHOOK_SECRET` | HMAC signature verification | Production |
+| `SENTRY_DSN` | Sentry project data source name | Production |
+| `SENTRY_ENVIRONMENT` | Sentry environment tag (`production`) | Production |
+| `NODE_ENV` | Runtime environment | Production |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| Caller repo ↔ Central repo | `uses:` reusable workflow call | Requires central repo to be public or enterprise-internal for cross-org |
-| Central workflow ↔ Claude Action | `uses: anthropics/claude-code-action@v1` as a step | Action checks out the CALLER repo, not the central repo |
-| Central workflow ↔ Caller repo (PR creation) | GitHub App token passed to `gh` CLI | Token is scoped to caller repo only |
-| External monitor ↔ Central repo | HTTP POST → webhook bridge → `repository_dispatch` | Bridge validates source signature before forwarding |
-| Fixer workflow ↔ Dispatcher | `repository_dispatch` event type routing | Dispatcher uses `event.client_payload.error_source` to select fixer |
+| GitHub Actions <-> Vercel function | None (independent, parallel) | Both receive events, neither talks to the other |
+| Vercel function -> Sentry | `@sentry/node` SDK over HTTPS | SDK handles batching, retries, rate limiting |
+| `runs.json` <-> Sentry | None (independent data stores) | `runs.json` = git-committed backup; Sentry = real-time dashboards |
+| `repo-stack-map.json` <-> Vercel function | Vercel function can read it at build time or import it | Used to identify which repos are monitored |
 
-## Build Order (Phase Dependencies)
+## Sentry Telemetry Design
 
-The architecture has clear dependency layers. Build in this order:
+### Spans (Tracing)
 
+One span per auto-fix workflow run, capturing:
+
+| Attribute | Source | Example |
+|-----------|--------|---------|
+| `repo` | `payload.repository.full_name` | `fbetancourtc/laundry-operating-dash` |
+| `run_id` | `payload.workflow_run.id` | `12345678` |
+| `conclusion` | `payload.workflow_run.conclusion` | `success` / `failure` |
+| `branch` | `payload.workflow_run.head_branch` | `develop` |
+| `workflow_name` | `payload.workflow_run.name` | `Auto Fix` |
+| `duration_seconds` | Computed from `created_at` and `updated_at` | `180` |
+
+### Metrics (Counters and Gauges)
+
+| Metric Name | Type | Attributes | Purpose |
+|-------------|------|------------|---------|
+| `auto_fix.run.total` | counter | `repo`, `conclusion` | Total run count |
+| `auto_fix.fix.success` | counter | `repo` | Successful fix count |
+| `auto_fix.fix.failure` | counter | `repo` | Failed fix count |
+| `auto_fix.fix.escalated` | counter | `repo` | Escalated to human count |
+| `auto_fix.pr.opened` | counter | `repo` | Fix PRs opened |
+| `auto_fix.pr.accepted` | counter | `repo` | Fix PRs merged |
+| `auto_fix.pr.rejected` | counter | `repo` | Fix PRs closed without merge |
+| `auto_fix.run.duration` | distribution | `repo` | Run duration in seconds |
+| `auto_fix.estimated_cost` | distribution | `repo` | Estimated cost per run |
+
+### Cron Monitors
+
+One cron monitor per monitored repo. Purpose: detect if a repo stops getting auto-fix runs (system health). Not a traditional cron -- use Sentry's "heartbeat" monitor type with a generous window (e.g., 7 days) since CI failures are not on a schedule.
+
+| Monitor Slug | Schedule | Margin | Max Runtime |
+|-------------|----------|--------|-------------|
+| `auto-fix-{repo-slug}` | Heartbeat (not cron) | 7 days | 30 minutes |
+
+**Note:** Sentry cron monitors can use `captureCheckIn` with a heartbeat schedule. For repos with infrequent CI failures, set a wide margin (7+ days) to avoid false "missed" alerts. Alternatively, skip cron monitors for v1.2 MVP and use metric-based alerts instead.
+
+### Alerts (Configured in Sentry UI)
+
+| Alert | Condition | Action |
+|-------|-----------|--------|
+| High failure rate | `fix.failure` > 5 in 1 hour | Email notification |
+| Budget burn | `estimated_cost` sum > $150 in rolling 30 days | Email notification |
+| No activity | No `run.total` events for 7 days | Email notification |
+| Escalation spike | `fix.escalated` > 3 in 24 hours | Email notification |
+
+## Scaling Considerations
+
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| Current (14 repos, ~5-10 runs/day) | Single Vercel function, Sentry free tier likely sufficient |
+| 50 repos, ~50 runs/day | Same architecture. Vercel free tier handles 100K invocations/month. Sentry Team plan for more events. |
+| 200+ repos, ~500 runs/day | Consider Vercel Pro for longer execution times. Sentry Business plan. May need to sample spans (not metrics). |
+
+### Scaling Priorities
+
+1. **First bottleneck:** Sentry event quota. At high volume, span sampling (e.g., 10% of runs get full spans, all runs get metrics) preserves dashboards while reducing event count.
+2. **Second bottleneck:** Vercel function cold starts under burst load. Mitigated by keeping the function lightweight (no heavy frameworks). The `@sentry/node` import is the heaviest dependency.
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Webhook Handler Modifies GitHub State
+
+**What people do:** Have the webhook handler create issues, comment on PRs, or trigger additional workflows.
+**Why it's wrong:** Creates coupling between the observability layer and the execution layer. If the webhook handler has a bug, it can disrupt the auto-fix pipeline. Also creates authentication complexity (needs a GitHub token in addition to the webhook secret).
+**Do this instead:** Keep the webhook handler read-only. It observes events and emits telemetry. The existing GitHub Actions workflows handle all mutations.
+
+### Anti-Pattern 2: Duplicating Business Logic in the Webhook
+
+**What people do:** Re-implement circuit breaker logic, retry counting, or budget checking in the webhook handler.
+**Why it's wrong:** Creates two sources of truth for business rules. When the workflow logic changes, the webhook handler becomes stale.
+**Do this instead:** The webhook handler should only classify and count events. Business logic stays in the GitHub Actions workflows and Bash scripts.
+
+### Anti-Pattern 3: Synchronous Sentry Calls Blocking Response
+
+**What people do:** Await Sentry flush before returning 200 to GitHub.
+**Why it's wrong:** GitHub expects a quick response (< 10 seconds). If Sentry is slow, GitHub retries, causing duplicate events.
+**Do this instead:** Fire-and-forget Sentry calls. Use `Sentry.flush(2000)` with a short timeout in a `finally` block, but return 200 immediately. Sentry SDK batches and sends asynchronously by default.
+
+### Anti-Pattern 4: Using Next.js for a Single Endpoint
+
+**What people do:** Create a full Next.js project for one webhook endpoint.
+**Why it's wrong:** Massive dependency tree, slower cold starts, unnecessary complexity. The webhook is a single POST endpoint.
+**Do this instead:** Use plain Vercel serverless functions with `@vercel/node` types. Zero framework overhead.
+
+### Anti-Pattern 5: Storing State in the Webhook Function
+
+**What people do:** Keep in-memory counters, rate-limit trackers, or caches in the function.
+**Why it's wrong:** Serverless functions are ephemeral. State is lost between invocations. Under Vercel's Fluid Compute, instances may be reused but cannot be relied upon.
+**Do this instead:** All state lives in Sentry (metrics, spans, check-ins). The function is stateless.
+
+## Vercel Deployment Configuration
+
+### vercel.json
+
+```json
+{
+  "functions": {
+    "api/webhook.ts": {
+      "memory": 256,
+      "maxDuration": 10
+    }
+  }
+}
 ```
-Layer 1: Foundation (no dependencies)
-├── Central repo structure + prompt library
-├── GitHub App registration (all 3 orgs)
-└── Anthropic API key configuration
 
-Layer 2: Core Fix Engine (depends on Layer 1)
-├── fix-ci-failure.yml reusable workflow
-└── Claude Code Action integration + per-stack prompts
+**Rationale:**
+- **256 MB memory:** Sufficient for JSON parsing + Sentry SDK. No heavy computation.
+- **10 second max duration:** Webhook processing should complete in < 2 seconds. 10s gives margin for Sentry flush.
 
-Layer 3: Caller Integration (depends on Layer 2)
-├── Thin caller workflow template
-└── Install on first 1-2 repos for validation
+### package.json (Minimal Dependencies)
 
-Layer 4: Retry & Promotion (depends on Layer 3, validated data)
-├── Retry guard pattern
-└── PR promotion workflow (develop → qa auto-PR)
-
-Layer 5: External Error Sources (depends on Layer 4)
-├── Webhook bridge function (Sentry)
-├── dispatcher.yml routing workflow
-└── fix-sentry-error.yml + fix-crashlytics.yml
-
-Layer 6: Observability (depends on all layers)
-├── Success rate tracking
-└── Cost monitoring + escalation dashboard
+```json
+{
+  "name": "auto-fix-agent-webhook",
+  "private": true,
+  "dependencies": {
+    "@sentry/node": "^10.0.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.0.0",
+    "typescript": "^5.0.0"
+  }
+}
 ```
 
-**Key dependency rationale:**
-- The GitHub App must exist before any cross-repo PR creation can work — this is not optional.
-- Validate the core fix loop on one repo before extracting to reusable workflow pattern — avoids abstracting the wrong interface.
-- PR promotion workflow depends on understanding what a "successful auto-fix PR merge" looks like from real data.
-- External error source integration comes after CI failure is working because it shares the same fix engine — only the trigger and context extraction differ.
+**Only two runtime dependencies:** `@sentry/node` is the sole runtime dependency. `@vercel/node` is dev-only (types). This keeps the function bundle small and cold starts fast.
+
+## Build Order (Dependency-Aware)
+
+The following order respects dependencies -- each phase builds on the previous:
+
+| Order | Component | Depends On | Rationale |
+|-------|-----------|------------|-----------|
+| 1 | `api/_lib/types.ts` | Nothing | TypeScript interfaces for GitHub payloads. Foundation for everything else. |
+| 2 | `api/_lib/verify.ts` | `types.ts` | Signature verification. Security gate must be built before any handler logic. |
+| 3 | `api/_lib/sentry.ts` | Nothing (Sentry SDK) | Sentry initialization and helper functions. Can be built in parallel with verify.ts. |
+| 4 | `api/_lib/handlers.ts` | `types.ts`, `sentry.ts` | Event routing and telemetry emission. Core business logic of the webhook. |
+| 5 | `api/webhook.ts` | `verify.ts`, `handlers.ts` | Main entry point. Wires together verification and handling. |
+| 6 | `vercel.json` + `package.json` + `tsconfig.json` | All api/ files | Deployment configuration. Can be built in parallel with step 5. |
+| 7 | Vercel deployment | All of the above | Deploy to Vercel, get the public URL. |
+| 8 | GitHub webhook configuration | Vercel URL | Configure org-level webhooks pointing to the deployed URL. |
+| 9 | Sentry dashboard configuration | Live data flowing | Create dashboards and alerts after events start flowing. |
+
+### Suggested Phases for Roadmap
+
+1. **Phase 1: Scaffold + Security** (steps 1-3) -- Types, verification, Sentry init. Deploy a stub that accepts webhooks and logs to Sentry.
+2. **Phase 2: Event Processing** (steps 4-5) -- Full event handling. All telemetry emission.
+3. **Phase 3: Deployment + Wiring** (steps 6-8) -- Vercel deploy, GitHub webhook config, end-to-end test.
+4. **Phase 4: Dashboard + Alerts** (step 9) -- Sentry dashboard panels, alert rules, documentation.
 
 ## Sources
 
-- [GitHub Actions Reusable Workflows — Official Docs](https://docs.github.com/en/actions/concepts/workflows-and-actions/reusable-workflows) — HIGH confidence
-- [Scaling GitHub Actions Reusability — GitHub Well-Architected](https://wellarchitected.github.com/library/collaboration/recommendations/scaling-actions-reusability/) — HIGH confidence
-- [Claude Code GitHub Actions — Official Anthropic Docs](https://code.claude.com/docs/en/github-actions) — HIGH confidence
-- [Self-Healing CI Pipeline Architecture — Semaphore](https://semaphore.io/blog/self-healing-ci) — MEDIUM confidence (production pattern, different platform)
-- [How to Architect Self-Healing CI/CD for Agentic AI — Optimum Partners](https://optimumpartners.com/insight/how-to-architect-self-healing-ci/cd-for-agentic-ai/) — MEDIUM confidence
-- [Cross-Repository Workflows in GitHub Actions — OneUptime](https://oneuptime.com/blog/post/2025-12-20-cross-repository-workflows-github-actions/view) — MEDIUM confidence
-- [Repository Dispatch Pattern — Ananta Cloud](https://www.anantacloud.com/post/github-repository-dispatch-event-for-custom-triggers) — MEDIUM confidence
-- [GitHub Actions Sharing from Private Repos — GitHub Changelog 2022](https://github.blog/changelog/2022-12-13-github-actions-sharing-actions-and-reusable-workflows-from-private-repositories-is-now-ga/) — HIGH confidence
+- [Vercel Serverless Functions Documentation](https://vercel.com/docs/functions) -- HIGH confidence
+- [Vercel Project Configuration](https://vercel.com/docs/project-configuration) -- HIGH confidence
+- [Vercel Environment Variables](https://vercel.com/docs/environment-variables) -- HIGH confidence
+- [GitHub Validating Webhook Deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) -- HIGH confidence
+- [GitHub Webhook Events and Payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads) -- HIGH confidence
+- [Sentry Node.js Custom Span Instrumentation](https://docs.sentry.io/platforms/javascript/guides/node/tracing/instrumentation/custom-instrumentation/) -- HIGH confidence
+- [Sentry Node.js Metrics](https://docs.sentry.io/platforms/javascript/guides/node/metrics/) -- HIGH confidence
+- [Sentry Node.js Cron Monitoring](https://docs.sentry.io/platforms/javascript/guides/node/crons/) -- HIGH confidence
+- [Sentry JavaScript SDK Releases](https://github.com/getsentry/sentry-javascript/releases) -- HIGH confidence
+- [Hookdeck: Webhooks in Vercel Serverless Functions](https://hookdeck.com/webhooks/platforms/how-to-receive-and-replay-external-webhooks-in-vercel-serverless-functions) -- MEDIUM confidence
+- [GitHub Webhook Signature Verification Gist](https://gist.github.com/stigok/57d075c1cf2a609cb758898c0b202428) -- MEDIUM confidence
 
 ---
-*Architecture research for: Centralized self-healing CI/CD agent (GitHub Actions + Claude Code)*
-*Researched: 2026-03-01*
+*Architecture research for: v1.2 Monitoring & Observability (Vercel + Sentry integration)*
+*Researched: 2026-03-03*

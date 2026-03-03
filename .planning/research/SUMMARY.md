@@ -1,185 +1,250 @@
 # Project Research Summary
 
-**Project:** Auto-Fix Agent
-**Domain:** Centralized self-healing CI/CD system (GitHub Actions + Claude Code)
-**Researched:** 2026-03-01
+**Project:** Auto-Fix Agent — v1.2 Monitoring & Observability
+**Domain:** Vercel serverless webhook receiver + Sentry monitoring integration for an existing GitHub Actions CI/CD self-healing agent
+**Researched:** 2026-03-03 (v1.2 additions); 2026-03-01 (v1.0/v1.1 core)
 **Confidence:** HIGH
+
+---
 
 ## Executive Summary
 
-Auto-fix-agent is a centralized orchestration layer that wires together GitHub Actions `workflow_run` triggers, the `anthropics/claude-code-action@v1` GA action, and external error source webhooks (Sentry, Firebase Crashlytics) to automatically diagnose and fix CI failures and production errors across 14 repos in 3 GitHub organizations. The core architecture is a hub-and-spoke model: one public central repo holds reusable workflows and a prompt library; each caller repo holds a thin 15-line workflow that delegates to the hub. No single off-the-shelf tool provides the full pipeline (detection + fix + PR + retry guard + promotion + multi-source ingestion + cost tracking), so the value of this project is the orchestration and guardrails, not the AI fix generation itself.
+Auto-fix-agent is a centralized self-healing CI/CD system: 14 repos across 3 GitHub organizations trigger a central reusable GitHub Actions workflow that invokes Claude Code Action on CI failures, opens fix PRs, and commits run data to a flat `metrics/runs.json` file. The v1.0/v1.1 core pipeline (detection, fix generation, PR creation, retry guard, promotion, multi-stack prompt library) is working and validated. The v1.2 milestone adds the observability layer — the system currently has the raw data and safety mechanisms but zero real-time visibility into health, trends, or costs.
 
-The recommended approach is to build and validate the core fix loop on a single TypeScript repo first (detection, log retrieval, Claude fix, PR creation, retry guard), then expand to all 14 repos, and only then add external error sources (Sentry, Crashlytics) and observability. This phasing is driven by hard dependency ordering: the GitHub App token must exist before any cross-repo PR works; the retry guard must exist before any trigger is wired up; cross-org reusable workflow access requires the central repo to be public. Skipping any of these prerequisites causes silent failures that are difficult to debug.
+The recommended v1.2 approach introduces a single Vercel serverless function (`api/webhook.ts`) that acts as a passive observer on the GitHub event stream, translating webhook events into structured Sentry telemetry (spans, metrics, cron monitors, alert rules, dashboards). The Vercel function is deliberately read-only — it receives the same GitHub events that already drive the existing workflows but never mutates GitHub state. All observability state lives in Sentry. The existing GitHub Actions workflows, Bash scripts, and JSON configs are completely unchanged. The new dependency surface is minimal: `@sentry/node` v10 (sole runtime dependency), `@octokit/webhooks-methods` v6 (HMAC verification), and plain Vercel serverless functions (no framework) with TypeScript via `@vercel/node` v5. Total new cost: $0 (Vercel free tier covers ~50 events/month; Sentry Team plan already budgeted).
 
-The top risks are: (1) infinite retry loops that exhaust the $200/month API budget in a single day -- the circuit-breaker is a phase 1 prerequisite, not a feature to add later; (2) prompt injection via CI log content (a documented CVE against claude-code-action) -- input sanitization and tool allowlisting must be baked into the initial workflow; (3) agent scope creep where Claude "fixes" CI by modifying workflow files or lowering coverage thresholds -- enforced at both the prompt level and a post-run file diff validation step. All three must be addressed in the foundation phase before any real trigger is enabled.
+The key v1.2 risks fall into two clusters. Security: a webhook receiver on the public internet must verify `X-Hub-Signature-256` using `crypto.timingSafeEqual` before any processing, and all secrets must be scoped to Production-only in Vercel to prevent preview deployment exposure. Operational: GitHub enforces a strict 10-second webhook response timeout, which means the handler must respond 200 immediately and defer all Sentry SDK calls to an async `waitUntil()` continuation — skipping this causes silent event loss that surfaces as missing dashboard data, not an obvious error. Both risks must be addressed in Phase 1 before any metric data is written.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is pure GitHub Actions YAML, shell scripts, and the official `anthropics/claude-code-action@v1` action. No application runtime, no database, no framework dependencies in the central repo itself. The primary cost driver is Anthropic API usage at $0.18-0.60 per fix run, well within the $200/month budget at realistic failure rates (30-70 runs/month across 14 repos).
+**v1.2 additions (new):** The v1.2 stack adds a TypeScript Vercel serverless function alongside the existing pure YAML/Shell/JSON pipeline. The existing stack (GitHub Actions, Claude Code Action `@v1`, `actions/create-github-app-token@v2`, Bash scripts, JSON config) is validated and unchanged.
 
 **Core technologies:**
-- **`anthropics/claude-code-action@v1`**: AI agent that reads CI logs, edits source, opens PRs -- the only production-ready GA option; bundles its own Bun runtime
-- **GitHub Actions Reusable Workflows (`workflow_call`)**: Central workflow in public repo that all 14 callers invoke; propagates changes to all repos without touching caller files
-- **`actions/create-github-app-token@v2`**: Generates short-lived scoped tokens for cross-org PR creation; the only viable cross-org mechanism without enterprise billing
-- **`workflow_run` trigger**: Fires when a watched CI workflow completes with failure; native, zero-setup detection
-- **`repository_dispatch` event**: Universal webhook bridge for Sentry and Crashlytics to trigger fix workflows
-- **Claude Sonnet 4.6** (`claude-sonnet-4-6`): Default model at $3/$15 per MTok; Opus 4.6 reserved for the Kotlin monorepo only
-- **Sentry (`sentry-sdk` 2.x / `@sentry/nextjs` 9.x)**: Production error capture with webhook + Seer AI integration; Team plan at $26/month
+- `@sentry/node` v10 (not `@sentry/nextjs`, not the removed `@sentry/serverless`): Sentry SDK for a plain Node.js Vercel serverless function — spans, custom metrics, cron monitors, error capture. The `Sentry.metrics.*` API was removed in v9; use `span.setAttribute()` inside `Sentry.startSpan()` and `Sentry.captureMessage()` with structured contexts instead.
+- `@octokit/webhooks-methods` v6: minimal HMAC-SHA256 webhook verification; 95% smaller than the full `@octokit/webhooks` package (no event routing needed for a single endpoint)
+- `@vercel/node` v5 (dev dependency only): TypeScript types for `VercelRequest`/`VercelResponse`; zero runtime overhead
+- `@octokit/webhooks-types` v7 (dev dependency): compile-time safety for GitHub webhook payload shapes
+- TypeScript v5.5: Vercel natively compiles `api/*.ts` without a build step; self-contained to the `api/` module
+- Vercel Free (Hobby) plan: zero-config deployment; 100K invocations/month covers ~50 events/month with vast headroom
 
-**Critical version requirements:**
-- `actions/create-github-app-token` must be `@v2` (v1 lacks the `owner:` param needed for cross-org)
-- `claude-code-action` must be `@v1` GA (not `@beta`, which has deprecated inputs)
-- Pin model explicitly to `claude-sonnet-4-6` to avoid silent model upgrades
+**v1.0/v1.1 core (unchanged):**
+- `anthropics/claude-code-action@v1` — AI agent; only production-ready GA option
+- GitHub Actions Reusable Workflows (`workflow_call`) — hub-and-spoke central control
+- `actions/create-github-app-token@v2` — cross-org token generation (v2 required for `owner:` param)
+- `workflow_run` trigger — native CI failure detection
+- Claude Sonnet 4.6 (`claude-sonnet-4-6`) — $3/$15 per MTok; correct cost/capability balance
+- `@sentry/nextjs` v10 (on monitored Next.js repos) — note: the webhook receiver uses `@sentry/node`, not `@sentry/nextjs`
 
 ### Expected Features
 
+The existing system has raw data and safety mechanisms (circuit breaker, retry guard, scope validator, budget checker) but zero real-time visibility. v1.2 adds the eyes and ears.
+
 **Must have (table stakes):**
-- CI failure detection via `workflow_run` trigger
-- CI failure log retrieval and context injection
-- Claude Code Action fix generation with source-code-only scope restriction
-- Auto-created fix PR with `auto-fix` label on the failing repo
-- Retry guard (max 2 attempts) with human escalation issue on exhaustion
-- Stack-specific fix prompts (TypeScript first, then Python, then Kotlin)
-- GitHub App token for cross-org PR creation
-- Thin 15-line caller workflow template for each repo
-- Human review gate before merge (no auto-merge, ever)
+- Vercel serverless webhook receiver (`api/webhook.ts`) with HMAC-SHA256 signature verification — the foundation; nothing else works without it
+- Event routing for `workflow_run`, `pull_request`, and `pull_request_review` events
+- Sentry SDK initialization + error capture for receiver failures
+- Counter and distribution metrics for Operations Health panel (trigger frequency, fix outcome breakdown, run duration)
+- Value Metrics panel (MTTR, PR acceptance rate, cost per fix, monthly spend vs budget)
+- Sentry Custom Dashboard with Operations + Value panels
 
 **Should have (differentiators):**
-- Multi-repo, multi-org centralized control from one maintained system
-- Sentry production error to fix PR pipeline
-- PR promotion pipeline (develop to qa auto-PR after fix merges)
-- Retry guard with structured escalation (includes failure context, links to both attempt PRs)
-- Success rate and cost-per-fix tracking
-- `@claude` interactive review in auto-fix PRs
-- Versioned central workflow tags (v1, v2) for coordinated rollout
+- Safety Signal panel metrics: budget burn rate, circuit breaker trip rate, scope violation detection, escalation frequency
+- Sentry Cron Monitors per repo: detect repos that go silent (misconfigured callers, revoked tokens, disabled workflows)
+- Sentry Alert Rules: proactive notification when success rate drops, cost spikes, or a repo goes unhealthy
 
-**Defer (v2+):**
-- Firebase Crashlytics to fix PR (less mature API, fewer Android repos)
-- Cross-repo error correlation / ML pattern detection
-- Custom monitoring dashboard (Supabase table + UI)
-- Custom LLM fine-tuning on fix history
+**Defer (v1.3+):**
+- Artifact Status panel (PR lifecycle, promotion pipeline health) — lower priority than operations/value/safety visibility
+- Fix quality correlation by stack and error type — requires significant accumulated data
+- Promotion pipeline health tracking — only relevant for repos with promotion enabled
+
+**Explicit anti-features (do not build):**
+- Custom dashboard UI (React/Next.js) — Sentry dashboards are purpose-built; custom UI adds maintenance for no gain at 14 repos
+- Persistent database for metrics (Postgres, Supabase) — Sentry is the durable store; a second store creates two sources of truth
+- OpenTelemetry/Grafana stack — over-engineered for 14 repos; use Sentry as the single observability stack until outgrown
+- Webhook event replay/queue system — GitHub delivery is reliable; a missed data point does not break the system (`runs.json` remains accurate)
 
 ### Architecture Approach
 
-Hub-and-spoke: one public central repo (`auto-fix-agent`) holds all reusable workflows, a prompt library organized by stack, a webhook bridge function, and configuration mapping repos to stacks. Each of the 14 caller repos holds two thin workflows: an `auto-fix.yml` (triggers on CI failure, delegates to central fix workflow) and optionally a `promote.yml` (triggers on merged auto-fix PR, delegates to central promotion workflow). External error sources (Sentry, Crashlytics) route through a stateless webhook bridge function that converts HTTP webhooks to GitHub `repository_dispatch` events, which the central dispatcher routes to the appropriate fixer workflow.
+The v1.2 architecture follows the Passive Observer pattern: the Vercel function receives the same GitHub events that already drive the existing pipeline but takes no action that affects pipeline execution. It is a read-only event tap. All state lives in Sentry. The existing `metrics/runs.json` git-committed file continues as a cheap backup; Sentry becomes the real-time query layer.
 
 **Major components:**
-1. **CI Failure Listener** (per-repo thin caller) -- detects `workflow_run` failure, delegates to central
-2. **Reusable Fixer Workflows** (central repo) -- log retrieval, retry guard, Claude Code Action invocation, PR creation; separate workflow per error type (`fix-ci-failure.yml`, `fix-sentry-error.yml`, `fix-crashlytics.yml`)
-3. **Prompt Library** (central repo `prompts/`) -- base system rules + stack-specific diagnostic instructions; separated from workflow YAML for independent iteration
-4. **Webhook Dispatcher** (central repo) -- receives `repository_dispatch` from external monitors, validates payload, routes to correct fixer
-5. **Webhook Bridge Function** (serverless) -- translates Sentry/Crashlytics HTTP webhooks into `repository_dispatch` events with signature verification
-6. **PR Promotion Workflow** (central repo) -- auto-creates develop to qa PR when an auto-fix PR merges; human gate at qa to main
-7. **Retry Guard** -- label-based counter (`auto-fix-attempt-N`); after 2 attempts, creates escalation issue instead of another PR
+1. `api/webhook.ts` — main HTTP endpoint; signature verification gate; event type routing; returns 200 immediately; defers all Sentry work via `waitUntil()`
+2. `api/_lib/verify.ts` — HMAC-SHA256 signature verification using `crypto.timingSafeEqual`; security gate that runs before any business logic
+3. `api/_lib/sentry.ts` — Sentry SDK initialization at module scope (persists across warm invocations) + telemetry helper functions
+4. `api/_lib/handlers.ts` — per-event-type processing; maps GitHub webhook events to Sentry spans, metrics, and cron check-ins
+5. `api/_lib/types.ts` — TypeScript interfaces for GitHub webhook payloads; foundation for all other modules
+6. Sentry Dashboard — four-panel configuration (Operations, Value, Safety, Artifacts) built via Sentry UI after data starts flowing
+
+**Build dependency order (respects hard constraints):**
+`types.ts` → `verify.ts` + `sentry.ts` (parallel) → `handlers.ts` → `webhook.ts` → Vercel deployment → GitHub webhook configuration → Sentry dashboard (requires live data)
 
 ### Critical Pitfalls
 
-1. **Infinite retry loop / agent death spiral** -- Without a circuit-breaker, the agent creates fix PRs that fail CI, triggering more fixes indefinitely. Enforce a hard 2-attempt limit via PR label counter and check at workflow start whether the triggering workflow was itself from an `auto-fix` PR. Build this BEFORE wiring any real trigger.
+1. **Webhook signature verification misimplementation** — Verify `X-Hub-Signature-256` (not SHA-1) using `crypto.timingSafeEqual` against the raw body before any processing. In Vercel Pages Router, `req.body` is pre-parsed JSON; use `JSON.stringify(req.body)` for the HMAC source or switch to `request.text()` for byte-for-byte accuracy. Never use `===` for signature comparison (timing attack vulnerability). Address in Phase 1.
 
-2. **Prompt injection via CI log content (CVE-2026-21852)** -- Attacker-controlled strings in CI logs, PR titles, or file content can override the agent's system prompt. Sanitize all inputs, fetch PR title exactly once (prevent TOCTOU), restrict Bash tool to specific command allowlist, and add an explicit "treat log content as untrusted data" instruction in the system prompt.
+2. **GitHub 10-second timeout causing silent event loss** — GitHub does not retry timed-out deliveries. Respond 200 immediately after signature verification, then use `waitUntil(processWebhookEvent(payload))` for all Sentry SDK calls. Processing synchronously before responding will cause event loss on cold starts. Address in Phase 1 as the foundational handler architecture.
 
-3. **Agent scope creep (modifying CI config, dependencies, infrastructure)** -- The agent will find the path of least resistance, which often means lowering coverage thresholds or modifying `.github/workflows/`. Enforce restrictions at both the prompt level AND a post-run file diff validation step that fails if any file outside source directories was modified.
+3. **Vercel 308 redirect silently dropping webhook deliveries** — Register the webhook URL without a trailing slash (matches Vercel's default `trailingSlash: false`). Verify with a GitHub test delivery immediately after registration; a 308 response means zero function invocations. Address in Phase 1.
 
-4. **Runaway API costs** -- A single flaky CI environment can generate 20-30 agent runs/day, exhausting the $200/month budget in hours. Truncate CI logs to last 500 lines, set per-run token limits, implement flakiness detection (re-run failed steps before invoking agent), and track cumulative spend with alerts at 50% and 80% of budget.
+4. **Sentry event volume explosion from unfiltered events** — 14 repos at ~5-20 CI events/day can exhaust Sentry Team plan quota mid-month if events are not filtered. Only process `workflow_run.completed`, PRs with `auto-fix` label, and reviews on those PRs. Estimate monthly volume on paper before writing any `Sentry.captureEvent()` calls. Address in Phase 1 design.
 
-5. **Cross-org permission architecture failure** -- `secrets: inherit` does NOT work across org boundaries. The central repo must be public. Each caller must explicitly pass secrets. Test cross-org access from all 3 orgs before declaring the foundation complete.
+5. **Environment variable leakage to preview deployments** — Vercel defaults secrets to "All Environments." Scope `GITHUB_WEBHOOK_SECRET`, `SENTRY_DSN` to "Production" only. Return 404 (not 403) from the handler when `VERCEL_ENV !== 'production'`. Address in Phase 1 during Vercel project setup.
+
+6. **Missing event deduplication inflating metrics** — GitHub can redeliver webhooks; manual redelivery during debugging is common. Use the `X-GitHub-Delivery` GUID as a deduplication key in Upstash Redis (free tier: 10,000 commands/day, sufficient for ~50 events/month). Address in Phase 2 before trusting dashboard data for decisions.
+
+7. **Sentry DSN exposure in client bundle** — This project has no frontend; there should be no `sentry.client.config.ts` and no `NEXT_PUBLIC_SENTRY_DSN` variable. Store the DSN in a server-only env var. Address in Phase 1 during Sentry setup.
+
+---
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+The v1.2 roadmap phase structure follows the hard dependency chain identified in ARCHITECTURE.md: nothing works until the receiver is live and secure; dashboards require accumulated data; alert thresholds require baseline data to calibrate meaningfully.
 
-### Phase 1: Foundation and Core Fix Loop
-**Rationale:** Everything depends on the GitHub App, the permission model, and the retry guard. These are hard prerequisites, not optional features. Build and validate the core fix loop on a single TypeScript repo before abstracting.
-**Delivers:** Working end-to-end fix cycle on one repo: CI fails, agent diagnoses, agent fixes, PR opens, retry guard works, escalation works.
-**Addresses features:** CI failure detection, log retrieval, Claude Code Action fix generation, scope restriction, auto-created fix PR with label, retry guard with escalation, GitHub App token setup, TypeScript stack prompt, flakiness detection
-**Avoids pitfalls:** Infinite retry loop (circuit-breaker built first), prompt injection (input sanitization from day one), over-permissioned agent (permission model locked down), scope creep (post-run file diff validation), runaway costs (log truncation + token limits)
+### Phase 1: Scaffold, Security, and Sentry Init
 
-### Phase 2: Multi-Repo Rollout
-**Rationale:** Core loop validated on one repo; now extract to reusable workflow pattern and roll out to all 14 repos incrementally (not all at once). Add Python and Kotlin stack prompts.
-**Delivers:** All 14 repos across 3 orgs have thin caller workflows and are protected by the central auto-fix system. Stack-specific prompts for TypeScript, Python, and Kotlin.
-**Addresses features:** Thin caller template + onboarding script, Python stack prompt, Kotlin/Android stack prompt, multi-repo multi-org centralized control
-**Avoids pitfalls:** Cross-org permission failure (tested per-org during rollout), PR spam (flakiness filter validated in phase 1)
+**Rationale:** Everything downstream depends on the receiver being deployed, secure, and connected to Sentry. Five of the seven critical pitfalls (signature bypass, 308 redirect, 10-second timeout architecture, environment variable leakage, Sentry DSN exposure) must be addressed here. This phase establishes the foundation without any business logic — a secure, working stub that accepts webhooks and captures its own errors.
 
-### Phase 3: PR Promotion and Observability
-**Rationale:** With real fix PRs merging across repos, the manual develop-to-qa promotion becomes a real time cost. Enough data now exists to track success rate and cost meaningfully (minimum 10 fix attempts needed).
-**Delivers:** Automated develop-to-qa PR promotion. Success rate tracking. Cost-per-fix tracking with budget alerts. Weekly digest reports.
-**Addresses features:** PR promotion pipeline, success rate tracking, cost-per-fix tracking, versioned central workflow tags
-**Avoids pitfalls:** Hallucinated fixes (PR quality template with mandatory root cause citation enforced here)
+**Delivers:** Deployed Vercel function that accepts GitHub webhooks, verifies signatures, and captures receiver errors to Sentry. GitHub org-level webhook configured and returning 200. No metric emission yet — just a secure, observable stub.
 
-### Phase 4: External Error Source Integration
-**Rationale:** CI failure path is validated and scaled; now extend the same fix engine to production errors. Sentry first (more mature webhook API, native Python + JS SDKs). Crashlytics deferred to v2+.
-**Delivers:** Sentry production error to fix PR pipeline. Webhook bridge function (Vercel Edge or Cloudflare Worker). Dispatcher routing workflow.
-**Addresses features:** Sentry webhook integration, `repository_dispatch` bridge, production error fix prompts
-**Avoids pitfalls:** Sentry webhook over-triggering (use `issue.created` not `error.created`)
+**Addresses:**
+- Vercel project setup + deployment configuration (`vercel.json`, `package.json`, `tsconfig.json`)
+- `api/_lib/types.ts` — TypeScript interfaces for all webhook payloads
+- `api/_lib/verify.ts` — HMAC-SHA256 signature verification (`crypto.timingSafeEqual`)
+- `api/_lib/sentry.ts` — Sentry SDK initialization at module scope; basic error capture
+- Stub `api/webhook.ts` with `waitUntil()` pattern established, routing events, returning 200 immediately
+- GitHub org-level webhook configuration for 3 organizations pointing to the Vercel URL
+- Vercel environment variable scoping (Production only; all secrets marked Sensitive)
 
-### Phase 5 (v2+): Advanced Integration
-**Rationale:** Deferred until product-market fit is established (system reliably fixes a majority of CI failures).
-**Delivers:** Firebase Crashlytics bridge, custom monitoring dashboard, `@claude` interactive review fine-tuning.
-**Addresses features:** Crashlytics pipeline, custom dashboard, advanced cost analytics
+**Avoids:** Pitfalls 1 (signature bypass), 2 (10-second timeout), 3 (308 redirect), 5 (env var leakage), 7 (DSN exposure)
+
+**Research flag:** No additional research needed — all patterns have HIGH-confidence official source coverage.
+
+---
+
+### Phase 2: Event Processing, Metric Emission, and Deduplication
+
+**Rationale:** With a secure receiver in place, this phase wires the full event-to-telemetry mapping. The `waitUntil()` pattern was established in Phase 1; this phase populates it with real Sentry SDK calls. Event deduplication belongs here (not Phase 3) because it is a correctness prerequisite for any metric data used in decisions.
+
+**Delivers:** Full telemetry emission for all three event types. Operations Health and Value Metrics data starts flowing to Sentry. Deduplicated metrics using Upstash Redis.
+
+**Addresses:**
+- `api/_lib/handlers.ts` — full event routing and telemetry emission for `workflow_run`, `pull_request`, `pull_request_review`
+- Event filtering (only `workflow_run.completed`, only PRs with `auto-fix` label) to prevent quota explosion
+- `X-GitHub-Delivery` deduplication via Upstash Redis
+- Counter metrics: `autofix.trigger`, `autofix.outcome`, `autofix.pr_merged`, `autofix.pr_rejected`, `autofix.circuit_breaker`, `autofix.scope_violation`, `autofix.escalation`, `autofix.promotion`
+- Distribution metrics: `autofix.run_duration`, `autofix.mttr`, `autofix.cost`, `autofix.tokens`
+- Gauge metrics: `autofix.monthly_spend`, `autofix.budget_pct`, `autofix.success_rate`
+- Sentry span instrumentation per webhook invocation (one span per auto-fix run)
+- Error handling inside `waitUntil` callbacks (errors must surface to Sentry, not be silently swallowed)
+
+**Avoids:** Pitfall 4 (event volume explosion via filtering), Pitfall 6 (duplicate metrics via Upstash dedup)
+
+**Research flag:** The `waitUntil()` import path (`@vercel/functions`) and behavior under Vercel's Fluid Compute model (instance reuse) have MEDIUM-confidence sources. Verify during implementation. Upstash Redis free tier integration with Vercel is straightforward but confirm the specific binding approach (Vercel KV vs Upstash direct client).
+
+---
+
+### Phase 3: Dashboard, Cron Monitors, and Alert Rules
+
+**Rationale:** Dashboards and alerts require live data to be meaningful. Alert thresholds cannot be set responsibly without 1-2 weeks of baseline data. This phase converts raw Sentry telemetry into actionable operational panels.
+
+**Delivers:** Sentry Custom Dashboard with Operations Health + Value Metrics panels immediately. Safety Signal panel and per-repo Cron Monitors after baseline data accumulates. Alert rules calibrated to observed baselines.
+
+**Addresses:**
+- Sentry Custom Dashboard: Operations Health panel, Value Metrics panel, Safety Signal panel (Artifact Status panel deferred to v1.3)
+- Sentry Cron Monitors per repo (heartbeat type, 7-day margin for repos with infrequent failures — not traditional interval schedule)
+- Sentry Alert Rules: high failure rate (>5 in 1 hour), budget burn (>$150 rolling 30 days), no activity (7 days), escalation spike (>3 in 24 hours)
+- Verification: compare Sentry dashboard counts against GitHub Actions run history for the same time period (target: <5% variance)
+- Alert rule calibration against accumulated baseline (configure after 1-2 weeks of data)
+
+**Research flag:** No additional research needed. Sentry dashboard configuration is fully documented. Alert threshold calibration is empirical (requires baseline data), not a research question.
+
+---
 
 ### Phase Ordering Rationale
 
-- **Foundation before rollout:** The GitHub App, permission model, retry guard, and flakiness filter are prerequisites that cannot be retrofitted without pain. The architecture research explicitly identifies the GitHub App token as "a blocker for everything."
-- **Single-repo validation before multi-repo:** The architecture research recommends "validate the core fix loop on one repo before extracting to reusable workflow pattern -- avoids abstracting the wrong interface."
-- **CI failures before production errors:** External error source integration shares the same fix engine but adds webhook bridges and dispatcher routing. CI failure is the simpler trigger path (native GitHub, no external service dependency). Get it right first.
-- **Promotion after fix PRs exist:** The PR promotion workflow depends on understanding what a "successful auto-fix PR merge" looks like from real data. Cannot meaningfully test without real merged PRs.
-- **Observability after data exists:** Tracking success rate and cost requires enough runs to have data (the features research specifies "minimum 10 fix attempts").
+- Phase 1 before Phase 2: the receiver must be secure before any metric data can be trusted
+- Deduplication in Phase 2 (not Phase 3): incorrect to build dashboards on potentially duplicated data, then retroactively fix
+- Phase 2 before Phase 3: dashboards require data; alert thresholds require a baseline; both require Phase 2 to be running
+- Safety Signal metrics belong in Phase 2 emission layer (same code path as Operations and Value); only the Sentry dashboard widget for Safety is deferred to Phase 3
+- Artifact Status panel deferred to v1.3: PR lifecycle and promotion pipeline tracking are lower operational priority than operations/value/safety
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 1:** Research the `allowedTools` limitation (documented open issue: it does not restrict built-in tools in some versions). Validate post-run file diff validation as the enforcement mechanism.
-- **Phase 4:** Research Sentry webhook payload format and `issue.created` vs `error.created` event types. Evaluate whether Sentry Seer Autofix should be tried first before falling back to Claude Code Action.
+Phases needing deeper research during planning:
+- **Phase 2:** `waitUntil()` API from `@vercel/functions` — behavior on Hobby plan under Fluid Compute has MEDIUM-confidence sources only; verify the exact import and execution guarantee before implementing async processing
+- **Phase 2:** Upstash Redis vs Vercel KV for deduplication store — both work but confirm which is lower friction for Vercel deployment without additional service dependencies
 
-Phases with standard patterns (skip research-phase):
-- **Phase 2:** Multi-repo rollout follows established hub-and-spoke reusable workflow pattern, well-documented by GitHub.
-- **Phase 3:** PR promotion is a standard `pull_request: closed` trigger pattern with GitHub App token. Success/cost tracking uses GitHub Actions job summaries.
+Phases with standard patterns (skip additional research):
+- **Phase 1:** Vercel serverless function setup, TypeScript config, HMAC verification, Sentry init — all HIGH-confidence official documentation; no ambiguity
+- **Phase 3:** Sentry dashboard widget builder and alert rule configuration — comprehensive official documentation with working examples
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Core action (claude-code-action v1 GA) verified against official docs and repo. Pricing verified on Anthropic pricing page (2026-03-01). Cross-org workflow constraints confirmed by multiple community discussions. |
-| Features | HIGH | Competitor landscape verified against 8 tools (Claude Code Action, Copilot Coding Agent, Nx Self-Healing, Sentry Seer, OpenAI Codex, SWE-agent, Semaphore). Feature dependencies clearly mapped. |
-| Architecture | HIGH | Hub-and-spoke pattern verified against GitHub official docs, Semaphore production patterns, and Anthropic official action docs. Build order dependencies are logically sound. |
-| Pitfalls | HIGH | Critical pitfalls backed by CVE disclosures (CVE-2026-21852), GitHub Security Lab publications, and documented production incidents. Security guidance is current and specific. |
+| Stack | HIGH | All core packages verified against npm current versions (2026-03-03). Official docs for Vercel, Sentry v10, Octokit webhooks methods. One MEDIUM item: Sentry flush behavior in serverless (community discussion, not official docs). The deprecated `Sentry.metrics.*` API removal is confirmed in official migration guides. |
+| Features | HIGH | Sentry dashboard and metrics APIs are fully documented. Feature scope is well-bounded against existing system gaps. Anti-features are explicitly researched and justified. FEATURES.md uses deprecated Sentry metrics API names — translated to v10 patterns in this summary. |
+| Architecture | HIGH | Passive Observer pattern and event-to-telemetry mapping are clear and straightforward. Component boundaries are explicit. One known gap: token cost data is internal to GitHub Actions workflow steps and not available in webhook payloads; v1.2 uses estimated values. |
+| Pitfalls | HIGH | Seven critical pitfalls identified with official source verification. Each has a specific prevention strategy, phase assignment, and detection checklist. Recovery strategies documented. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`allowedTools` enforcement gap:** There is a documented open issue (#860 on claude-code-action) where `track_progress: true` adds write tools that bypass `allowedTools`. The workaround (post-run file diff validation) needs implementation testing in Phase 1. Until validated, assume the prompt-level restriction alone is insufficient.
-- **Crashlytics bridge maturity:** The Crashlytics REST API is described as "less mature" than Sentry webhooks. The Cloud Function bridge pattern is custom (not documented end-to-end by Firebase). Confidence on this integration is MEDIUM, deferred to v2+.
-- **Sentry Seer interaction:** Seer Autofix is described as creating fix PRs natively from Sentry issues, but the interaction with a custom Claude Code Action pipeline is untested. Need to determine whether Seer should run first (with Claude as fallback) or whether they should be fully separate. Research this during Phase 4 planning.
-- **Anthropic rate limits:** Anthropic introduced weekly rate limits for heavy Claude Code users (August 2025). The impact on concurrent fix runs across 14 repos is unknown. Consider separate API keys per org as a mitigation, but this adds key management overhead.
-- **`secrets: inherit` cross-org behavior:** Confirmed to fail silently. The explicit secret passing pattern is documented, but the developer experience of maintaining secret references across 14 repos needs tooling (the `setup-caller.sh` script addresses this).
+- **Token cost data in Sentry:** The webhook receiver cannot observe token counts or cost directly — these are internal to the Claude API call inside the GitHub Actions workflow. The existing `record-metrics.sh` script captures this into `runs.json`. For cost-per-fix metrics in Sentry, v1.2 will use estimated values based on run duration. A future enhancement (v1.3+) could have `record-metrics.sh` POST cost data to a second Vercel endpoint. Flag this when building the Value Metrics panel — label cost estimates as estimates.
+
+- **FEATURES.md vs STACK.md API discrepancy:** FEATURES.md references `Sentry.metrics.increment()`, `Sentry.metrics.gauge()`, and `Sentry.metrics.distribution()` — these were removed in Sentry SDK v9. STACK.md correctly documents the v10 replacement API: `span.setAttribute()` inside `Sentry.startSpan()` and `Sentry.captureMessage()` with structured contexts. During Phase 2 implementation, use the STACK.md API patterns; ignore the metric names in FEATURES.md as API guidance (the metric naming conventions remain valid, only the SDK calls change).
+
+- **Sentry cron monitor type for irregular repos:** Repos with infrequent and unpredictable CI failures do not map cleanly to a traditional `interval` cron schedule. The architecture recommends a heartbeat monitor with a 7-day margin. Confirm Sentry's heartbeat monitor configuration API during Phase 3 to avoid false "missed" alerts for low-activity repos.
+
+- **Raw body HMAC accuracy:** If `JSON.stringify(JSON.parse(rawBody))` produces different bytes than GitHub's original payload (key ordering, whitespace), HMAC verification fails intermittently. `@octokit/webhooks-methods` handles this correctly. If implementing with raw `crypto`, test with real GitHub payloads before deploying to production.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [anthropics/claude-code-action GitHub repo](https://github.com/anthropics/claude-code-action) -- version, configuration API, deprecated inputs, allowed tools
-- [Claude Code GitHub Actions official docs](https://code.claude.com/docs/en/github-actions) -- GA v1 setup, security configuration, model parameter
-- [claude-code-action security docs](https://github.com/anthropics/claude-code-action/blob/main/docs/security.md) -- permission scoping, token lifetime, prompt injection risks
-- [Anthropic pricing page](https://platform.claude.com/docs/en/about-claude/pricing) -- model names, token pricing (retrieved 2026-03-01)
-- [GitHub Docs: Reuse workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) -- cross-org constraints, secrets inheritance
-- [GitHub Community Discussion #65766](https://github.com/orgs/community/discussions/65766) -- `secrets: inherit` fails cross-org (confirmed)
-- [actions/create-github-app-token v2](https://github.com/actions/create-github-app-token) -- `owner:` param for cross-org
-- [GitHub Security Lab: Preventing pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) -- workflow security patterns
-- [Check Point Research: CVE-2025-59536, CVE-2026-21852](https://research.checkpoint.com/2026/rce-and-api-token-exfiltration-through-claude-code-project-files-cve-2025-59536/) -- prompt injection RCE in claude-code-action
+
+- [Sentry Node.js SDK docs](https://docs.sentry.io/platforms/javascript/guides/node/) — init, startSpan, captureMessage, cron check-in API
+- [Sentry v9 to v10 migration guide](https://docs.sentry.io/platforms/javascript/guides/node/migration/v9-to-v10/) — removed metrics API, OpenTelemetry v2 internals
+- [Sentry Custom Dashboards](https://docs.sentry.io/product/dashboards/custom-dashboards/) — widget types, dashboard layout patterns
+- [Sentry Cron Monitoring for Node.js](https://docs.sentry.io/platforms/javascript/guides/node/crons/) — withMonitor, captureCheckIn API
+- [Sentry Billing Quota Management](https://docs.sentry.io/pricing/quotas/) — event volume limits, spike protection configuration
+- [Sentry Alerts documentation](https://docs.sentry.io/product/alerts/) — metric alert configuration
+- [Vercel Functions documentation](https://vercel.com/docs/functions) — api/ directory, handler signature, maxDuration configuration
+- [Vercel Sensitive Environment Variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables) — Production-only scoping
+- [Vercel Knowledge Base: raw body for webhooks](https://vercel.com/kb/guide/how-do-i-get-the-raw-body-of-a-serverless-function) — body parsing behavior, HMAC implications
+- [Vercel Knowledge Base: function timeouts](https://vercel.com/kb/guide/what-can-i-do-about-vercel-serverless-functions-timing-out) — 10-second limit, mitigation patterns
+- [GitHub: Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) — HMAC-SHA256 official pattern
+- [GitHub: Handling webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/handling-webhook-deliveries) — retry behavior, timeout rules, deduplication guidance
+- [GitHub: Troubleshooting webhooks](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/troubleshooting-webhooks) — 308 redirect diagnosis
+- [@octokit/webhooks-methods GitHub](https://github.com/octokit/webhooks-methods.js) — verify(), sign(), verifyWithFallback() API
+- [@sentry/node on npm](https://www.npmjs.com/package/@sentry/node) — v10.41.0 current version confirmed 2026-03-03
+- [@vercel/node on npm](https://www.npmjs.com/package/@vercel/node) — v5.6.10 current version confirmed 2026-03-03
 
 ### Secondary (MEDIUM confidence)
-- [Semaphore: Self-Healing CI Pipeline Architecture](https://semaphore.io/blog/self-healing-ci) -- production patterns from different platform
-- [Sentry Seer documentation](https://docs.sentry.io/product/ai-in-sentry/seer/) -- Seer issue fix flow, PR creation described as semi-manual
-- [Firebase Cloud Functions alert events](https://firebase.google.com/docs/functions/alert-events) -- Crashlytics `onNewFatalIssue` trigger (bridge pattern is custom)
-- [OpenAI Cookbook: Codex CI autofix](https://developers.openai.com/cookbook/examples/codex/autofix-github-actions) -- similar workflow_run pattern
-- [Optimum Partners: Self-Healing CI/CD Architecture](https://optimumpartners.com/insight/how-to-architect-self-healing-ci/cd-for-agentic-ai/) -- industry patterns
+
+- [Hookdeck: Webhooks in Vercel Serverless Functions](https://hookdeck.com/webhooks/platforms/how-to-receive-and-replay-external-webhooks-in-vercel-serverless-functions) — body parsing patterns, response timing patterns
+- [Vercel Blog: Scale to one (Fluid Compute)](https://vercel.com/blog/scale-to-one-how-fluid-solves-cold-starts) — cold start behavior, instance reuse
+- [Sentry + Vercel serverless community discussion](https://github.com/getsentry/sentry-javascript/discussions/18591) — `@sentry/node` compatibility with Vercel functions (community, not official)
+- [Stack Overflow: webhook 308 on Vercel](https://stackoverflow.com/questions/75062050/stripe-webhook-returning-308-error-when-calling-vercel-serverless-function) — trailing slash redirect pitfall confirmation
+- [Hookdeck: Implement Webhook Idempotency](https://hookdeck.com/webhooks/guides/implement-webhook-idempotency) — deduplication patterns
+- [GitHub Community: webhook retry handling](https://github.com/orgs/community/discussions/151676) — duplicate event behavior confirmation
+- [CI/CD Monitoring Metrics Guide](https://daily.dev/blog/ultimate-guide-to-cicd-monitoring-metrics) — industry metric patterns for MTTR, success rate
 
 ### Tertiary (LOW confidence)
-- Crashlytics REST API webhook bridge -- custom pattern, not documented end-to-end; needs validation during Phase 4+
-- Anthropic weekly rate limit behavior for concurrent agent runs -- inferred from user reports, not officially documented per-key limits
+
+- [AI Agent Monitoring Best Practices 2026](https://uptimerobot.com/knowledge-hub/monitoring/ai-agent-monitoring-best-practices-tools-and-metrics/) — general patterns; all specific claims verified against official Sentry docs
+- [Sentry Comprehensive Guide 2025 (baytechconsulting)](https://www.baytechconsulting.com/blog/sentry-io-comprehensive-guide-2025) — third-party summary; used only for initial orientation, all referenced patterns verified against official sources
 
 ---
-*Research completed: 2026-03-01*
+*Research completed: 2026-03-03*
+*Covers: v1.2 Monitoring & Observability (Vercel + Sentry webhook receiver)*
+*Prior research: v1.0/v1.1 core pipeline (2026-03-01) — see git history for prior SUMMARY.md*
 *Ready for roadmap: yes*
