@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-2.2 (shipped 2026-03-02) — [archive](milestones/v1.0-ROADMAP.md)
-- 📋 **v1.1** — Phases 3-4 (planned)
+- ✅ **v1.1 Multi-Repo Rollout & Observability** — Phases 3-4 (shipped 2026-03-03) — [archive](milestones/v1.1-ROADMAP.md)
 
 ## Phases
 
@@ -17,30 +17,13 @@
 
 </details>
 
-### 📋 v1.1 (Planned)
+<details>
+<summary>✅ v1.1 Multi-Repo Rollout & Observability (Phases 3-4) — SHIPPED 2026-03-03</summary>
 
-#### Phase 3: Multi-Repo Rollout
-**Goal:** Expand auto-fix to all 14 repos across 3 orgs — Python/Kotlin prompt expansion, thin caller onboarding template, and full enrollment with working auto-fix on each repo.
-**Plans:** 3 plans
+- [x] Phase 3: Multi-Repo Rollout (3/3 plans) — completed 2026-03-03
+- [x] Phase 4: Promotion and Observability (3/3 plans) — completed 2026-03-03
 
-Plans:
-- [x] 03-01-PLAN.md — Expand Python prompt + create ONBOARDING.md
-- [ ] 03-02-PLAN.md — Enroll 8 repos (fbetancourtc + LiftitFinOps) with callers, secrets, smoke test
-- [x] 03-03-PLAN.md — Prepare Liftitapp activation guide for 7 repos (pending admin)
-
-**Dependencies:** v1.0 complete
-**Requirements:** Python stack-specific fix prompt, Kotlin stack-specific fix prompt, thin caller template with onboarding docs, all 14 repos enrolled with working auto-fix
-
-#### Phase 4: Promotion and Observability
-**Goal:** Add develop→qa→main promotion flow with human approval gate, plus success rate tracking, cost-per-fix tracking via token usage, and budget alerts at 50%/80% of $200/month threshold.
-**Plans:** 3
-**Dependencies:** Phase 3 complete
-**Requirements:** Auto-create develop→qa PR when fix PR merges, human approval gate for qa→main promotion, success rate tracking per repo, cost-per-fix tracking via token usage output, budget alerts at 50%/80% of $200/month threshold
-
-Plans:
-- [x] 04-01-PLAN.md — Promotion pipeline (promote.yml + caller template + repo config)
-- [x] 04-02-PLAN.md — Observability (success tracking, cost tracking, budget alerts)
-- [x] 04-03-PLAN.md — Gap closure: reviewer decline handler + budget display fix
+</details>
 
 ## Progress
 
@@ -50,5 +33,5 @@ Plans:
 | 2. Core Fix Loop | v1.0 | 3/3 | Complete | 2026-03-02 |
 | 2.1 Integration Fixes & Documentation | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
-| 3. Multi-Repo Rollout | v1.1 | 2/3 | In Progress | - |
+| 3. Multi-Repo Rollout | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |

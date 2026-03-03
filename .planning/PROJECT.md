@@ -22,22 +22,24 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 - ✓ 2-attempt retry guard with `needs-human` escalation — v1.0
 - ✓ Human review gate enforced architecturally (no auto-merge) — v1.0
 - ✓ Input sanitization for CI logs (prompt injection, shell injection, secrets) — v1.0
+- ✓ Python stack-specific fix prompt (24 patterns, 6 categories) — v1.1
+- ✓ Kotlin stack-specific fix prompt (stub, expand when failures surface) — v1.1
+- ✓ Thin caller template with ONBOARDING.md — v1.1
+- ✓ 8 repos enrolled with working auto-fix (fbetancourtc + LiftitFinOps) — v1.1
+- ✓ Auto-create develop→qa PR when fix PR merges — v1.1
+- ✓ Human approval gate for qa→main promotion — v1.1
+- ✓ Success rate tracking per repo — v1.1
+- ✓ Cost-per-fix tracking via token usage output — v1.1
+- ✓ Budget alerts at 50%/80% of $200/month threshold — v1.1
 - ✓ Circuit breaker prevents self-triggering on auto-fix PR failures — v1.0
 - ✓ Per-run token/time limits (`--max-turns 10`, `timeout-minutes: 15`) — v1.0
 - ✓ Agent isolated from production secrets and deployment triggers — v1.0
 
 ### Active
 
-- [ ] Python stack-specific fix prompt (FastAPI/pytest/ruff expansion)
-- [ ] Kotlin stack-specific fix prompt (Android/ktlint/detekt/Gradle expansion)
-- [ ] Thin caller template with onboarding docs for new repos
-- [ ] All 14 repos enrolled with working auto-fix
 - [ ] `@claude` interactive code review via PR comments
-- [ ] Auto-create develop → qa PR when fix PR merges
-- [ ] Human approval gate for qa → main promotion
-- [ ] Success rate tracking per repo
-- [ ] Cost-per-fix tracking via token usage output
-- [ ] Budget alerts at 50%/80% of $200/month threshold
+- [ ] Liftitapp org enrollment (6 repos, pending admin approval)
+- [ ] LiftitFinOps/conciliacion-averias secrets configuration
 
 ### Out of Scope
 
@@ -51,7 +53,7 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 
 ## Context
 
-Shipped v1.0 MVP with 1,381 LOC across YAML, Shell, JSON, and Markdown.
+Shipped v1.1 with ~1,973 LOC across YAML, Shell, JSON, and Markdown.
 Tech stack: GitHub Actions, Claude Code Action, Bash scripts, JSON config.
 GitHub App (ID: 2985828) installed on fbetancourtc and LiftitFinOps; Liftitapp pending admin.
 14 active repos across 3 orgs (10 TypeScript, 4 Python, 1 Kotlin monorepo).
@@ -80,4 +82,4 @@ Audit found 4 non-critical tech debt items — all mitigated.
 - **Rate limits**: GitHub API (5000 req/hr) and Anthropic API limits
 
 ---
-*Last updated: 2026-03-02 after v1.0 milestone*
+*Last updated: 2026-03-03 after v1.1 milestone*
