@@ -64,6 +64,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Phase 3 Wave 1 complete (03-01 done). Wave 2 pending (03-02 + 03-03 in parallel).
+Stopped at: Phase 3 Wave 2 partial. 03-02 Tasks 1-2 done (callers deployed to 8 repos, secrets audited), Task 3 checkpoint pending. 03-03 not started.
 Resume file: .planning/phases/03-multi-repo-rollout/03-02-PLAN.md
-Note: Resume with `/gsd:execute-phase 3` — it auto-skips completed plans and picks up from 03-02.
+Note: 03-02 needs continuation (Task 3 checkpoint — approve enrollment). 03-03 needs full execution. Resume with `/gsd:execute-phase 3`.
