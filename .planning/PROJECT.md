@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A centralized self-healing CI/CD system that monitors repos across 3 GitHub organizations for CI failures, auto-diagnoses bugs using Claude Code Action, implements source-code-only fixes, and opens PRs with human approval gates. Shipped v1.0 MVP with full fix loop validated on TypeScript repos.
+A centralized self-healing CI/CD system that monitors repos across 3 GitHub organizations for CI failures, auto-diagnoses bugs using Claude Code Action, implements source-code-only fixes, and opens PRs with human approval gates. Shipped v1.0 MVP and v1.1 multi-repo rollout. Now adding monitoring and observability via Sentry + Vercel webhook receiver.
 
 ## Core Value
 
@@ -37,6 +37,9 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 
 ### Active
 
+- [ ] Vercel serverless webhook receiver for GitHub events
+- [ ] Sentry integration for operations health, value metrics, safety, and artifact monitoring
+- [ ] Dashboard with operations, value, safety, and artifact panels
 - [ ] `@claude` interactive code review via PR comments
 - [ ] Liftitapp org enrollment (6 repos, pending admin approval)
 - [ ] LiftitFinOps/conciliacion-averias secrets configuration
@@ -50,6 +53,23 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 - Infrastructure fixes (Terraform) — production blast radius
 - Automated rollback — requires context agent doesn't have
 - Slack/Teams notifications — GitHub PR notifications suffice
+
+## Current Milestone: v1.2 Monitoring & Observability
+
+**Goal:** Add monitoring and observability to the auto-fix pipeline via Sentry + Vercel webhook receiver, providing visibility into operations health, value metrics, safety signals, and artifact status.
+
+**Target features:**
+- Vercel serverless function (`/api/webhook.ts`) receiving GitHub webhook events (workflow_run, pull_request, pull_request_review)
+- Sentry integration: Transactions (per run), Custom Events, Cron Monitors (per repo), Alerts, Dashboards
+- Operations health: trigger frequency, fix outcomes (success/fail/escalation), repo health scores
+- Value metrics: PR acceptance rate, mean-time-to-fix (MTTR), cost per fix
+- Safety monitoring: budget burn rate, scope violations, failure pattern detection
+- Artifact monitoring: caller deployment status, PR lifecycle tracking, promotion pipeline health
+
+**Architecture:**
+- GitHub Webhooks → Vercel Serverless Function → Sentry
+- Receiver lives in this repo (auto-fix-agent) as a Vercel function
+- User has existing Sentry account
 
 ## Context
 
@@ -82,4 +102,4 @@ Audit found 4 non-critical tech debt items — all mitigated.
 - **Rate limits**: GitHub API (5000 req/hr) and Anthropic API limits
 
 ---
-*Last updated: 2026-03-03 after v1.1 milestone*
+*Last updated: 2026-03-03 after starting v1.2 milestone*
