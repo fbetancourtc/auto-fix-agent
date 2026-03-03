@@ -19,8 +19,17 @@
 
 ### 📋 v1.1 (Planned)
 
-- [ ] Phase 3: Multi-Repo Rollout (3 plans)
-- [ ] Phase 4: Promotion and Observability (2 plans)
+#### Phase 3: Multi-Repo Rollout
+**Goal:** Expand auto-fix to all 14 repos across 3 orgs — Python/Kotlin prompt expansion, thin caller onboarding template, and full enrollment with working auto-fix on each repo.
+**Plans:** 3
+**Dependencies:** v1.0 complete
+**Requirements:** Python stack-specific fix prompt, Kotlin stack-specific fix prompt, thin caller template with onboarding docs, all 14 repos enrolled with working auto-fix
+
+#### Phase 4: Promotion and Observability
+**Goal:** Add develop→qa→main promotion flow with human approval gate, plus success rate tracking, cost-per-fix tracking via token usage, and budget alerts at 50%/80% of $200/month threshold.
+**Plans:** 2
+**Dependencies:** Phase 3 complete
+**Requirements:** Auto-create develop→qa PR when fix PR merges, human approval gate for qa→main promotion, success rate tracking per repo, cost-per-fix tracking via token usage output, budget alerts at 50%/80% of $200/month threshold
 
 ## Progress
 
