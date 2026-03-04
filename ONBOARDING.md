@@ -91,3 +91,60 @@ grep "^name:" .github/workflows/*.yml
 | Agent modifies wrong files | Missing or incorrect `allowed_dirs` | Update `repo-stack-map.json` with correct dirs |
 | PR created against wrong branch | `--base develop` in prompt vs repo default | Verify repo's default branch matches prompt config |
 | "needs-human" issue created | Agent failed 2x on same failure | Human review required -- check the linked PRs for what the agent tried |
+
+## Webhook Registration
+
+The auto-fix monitoring system receives GitHub webhook events via a Vercel serverless function. One **org-level webhook** is registered per GitHub organization. All orgs share the same webhook secret.
+
+### Subscribed Events
+
+Each webhook must be subscribed to exactly 3 event types:
+
+- **Workflow runs** -- triggers auto-fix analysis on CI failures
+- **Pull requests** -- tracks auto-fix PR lifecycle (opened, merged, closed)
+- **Pull request reviews** -- tracks review outcomes on auto-fix PRs
+
+### Registration Steps
+
+For each organization, register a webhook with the following settings:
+
+1. Navigate to the org's webhook settings page (see URLs below)
+2. Click **Add webhook**
+3. Configure:
+   - **Payload URL:** `https://<your-vercel-app>.vercel.app/api/webhook` (NO trailing slash -- critical to avoid Vercel 308 redirect)
+   - **Content type:** `application/json`
+   - **Secret:** Use the same `GITHUB_WEBHOOK_SECRET` value configured in Vercel environment variables
+   - **Which events:** Select "Let me select individual events" then check:
+     - `Workflow runs`
+     - `Pull requests`
+     - `Pull request reviews`
+   - **Active:** checked
+4. Click **Add webhook** to save
+
+### Organization Webhook Settings URLs
+
+| Organization | Type | Webhook Settings URL |
+|---|---|---|
+| `fbetancourtc` | Personal account | https://github.com/settings/hooks |
+| `Liftitapp` | Organization | https://github.com/organizations/Liftitapp/settings/hooks |
+| `LiftitFinOps` | Organization | https://github.com/organizations/LiftitFinOps/settings/hooks |
+
+**Note:** `fbetancourtc` is a personal account, so use the account-level hooks page (`github.com/settings/hooks`) instead of the organization path.
+
+### Verification
+
+After registering each webhook:
+
+1. Click **Test** on the webhook entry to send a ping event
+2. Check **Vercel function logs** (Dashboard > Project > Functions > api/webhook) for the incoming request
+3. Check the **GitHub webhook delivery log** (Recent Deliveries tab on the webhook page) -- should show a 200 response
+4. Check **Sentry** for the `auto-fix-monitor` project -- should show breadcrumbs from the ping event (no errors). The ping is filtered as an unrecognized event type and logged as a Sentry breadcrumb.
+
+### Webhook Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| 308 response | Payload URL has a trailing slash | Remove the trailing slash from the webhook URL |
+| 401 response | Signature mismatch | Verify `GITHUB_WEBHOOK_SECRET` matches between the Vercel env var and the GitHub webhook secret field |
+| 404 response | Non-production deployment or wrong URL | Verify Vercel deployment is on main branch (Production) and `VERCEL_ENV` is `production` |
+| No response | Function not deployed | Verify the Vercel project is deployed and the function appears in Vercel Dashboard > Functions tab |
