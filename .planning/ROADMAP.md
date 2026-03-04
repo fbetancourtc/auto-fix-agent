@@ -94,6 +94,6 @@ Phases execute in numeric order: 5 → 6 → 7
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 3. Multi-Repo Rollout | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
-| 5. Webhook Receiver and Security Foundation | v1.2 | 0/2 | Planning complete | - |
+| 5. Webhook Receiver and Security Foundation | v1.2 | 1/2 | In Progress | - |
 | 6. Event Processing, Metrics, and Deduplication | v1.2 | 0/0 | Not started | - |
 | 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 0/0 | Not started | - |

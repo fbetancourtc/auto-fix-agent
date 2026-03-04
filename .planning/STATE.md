@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Monitoring & Observability
-status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-03T20:13:41.757Z"
-last_activity: 2026-03-03 — Roadmap created for v1.2
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-04T14:10:23.750Z"
+last_activity: 2026-03-04 — Completed Plan 05-01 (webhook handler foundation)
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 Milestone: v1.2 Monitoring & Observability
 Phase: 5 of 7 (Webhook Receiver and Security Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-03 — Roadmap created for v1.2
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-03-04 — Completed Plan 05-01 (webhook handler foundation)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 88%
 
 ## Performance Metrics
 
@@ -45,6 +45,10 @@ Progress: [░░░░░░░░░░] 0%
 ### Decisions
 
 See PROJECT.md Key Decisions table for full history with outcomes.
+
+- (05-01) Used .js extensions in TS imports for ESM compat with Vercel bundler
+- (05-01) Side-effect Sentry import first, then namespace import for API usage
+- (05-01) Generic payload typing in processEvent -- full webhook-types deferred to Plan 02
 
 ### Blockers/Concerns (carried from v1.1)
 
@@ -60,6 +64,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Roadmap created for v1.2
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-webhook-receiver-and-security-foundation/05-CONTEXT.md
+Last activity: 2026-03-04 - Completed Plan 05-01 (webhook handler foundation)
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-webhook-receiver-and-security-foundation/05-02-PLAN.md

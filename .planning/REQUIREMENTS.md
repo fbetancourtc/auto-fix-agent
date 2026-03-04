@@ -9,11 +9,11 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 ### Webhook Receiver
 
-- [ ] **HOOK-01**: Vercel serverless function (`/api/webhook.ts`) receives GitHub webhook events and responds 200 within 5 seconds
-- [ ] **HOOK-02**: HMAC-SHA256 signature verification rejects unsigned or tampered requests before any processing
+- [x] **HOOK-01**: Vercel serverless function (`/api/webhook.ts`) receives GitHub webhook events and responds 200 within 5 seconds
+- [x] **HOOK-02**: HMAC-SHA256 signature verification rejects unsigned or tampered requests before any processing
 - [ ] **HOOK-03**: Event type routing dispatches `workflow_run`, `pull_request`, and `pull_request_review` events to appropriate handlers
 - [ ] **HOOK-04**: Idempotency handling via `X-GitHub-Delivery` header prevents duplicate event processing
-- [ ] **HOOK-05**: Async processing via `waitUntil()` defers Sentry calls after immediate 200 response
+- [x] **HOOK-05**: Async processing via `waitUntil()` defers Sentry calls after immediate 200 response
 - [ ] **HOOK-06**: Event filtering limits processing to `workflow_run.completed`, PRs with `auto-fix` label, and reviews on those PRs
 
 ### Operations Health
@@ -39,14 +39,14 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 ### Sentry Integration
 
-- [ ] **SENT-01**: Sentry SDK initialized in webhook function with error capture for receiver failures
+- [x] **SENT-01**: Sentry SDK initialized in webhook function with error capture for receiver failures
 - [ ] **SENT-02**: Custom Sentry dashboard with Operations Health, Value Metrics, and Safety Signal panels
 - [ ] **SENT-03**: Sentry Cron Monitors per enrolled repo detect repos that stop triggering events
 - [ ] **SENT-04**: Sentry alert rules fire when success rate drops, cost spikes, or a repo goes silent
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: Vercel project deployed from auto-fix-agent repo with environment variables scoped to Production only
+- [x] **INFRA-01**: Vercel project deployed from auto-fix-agent repo with environment variables scoped to Production only
 - [ ] **INFRA-02**: GitHub org-level webhooks configured for all 3 organizations pointing to Vercel URL
 - [ ] **INFRA-03**: Upstash Redis (free tier) provides deduplication store for `X-GitHub-Delivery` GUIDs
 
@@ -86,11 +86,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HOOK-01 | Phase 5 | Pending |
-| HOOK-02 | Phase 5 | Pending |
+| HOOK-01 | Phase 5 | Complete |
+| HOOK-02 | Phase 5 | Complete |
 | HOOK-03 | Phase 5 | Pending |
 | HOOK-04 | Phase 6 | Pending |
-| HOOK-05 | Phase 5 | Pending |
+| HOOK-05 | Phase 5 | Complete |
 | HOOK-06 | Phase 5 | Pending |
 | OPS-01 | Phase 6 | Pending |
 | OPS-02 | Phase 6 | Pending |
@@ -104,11 +104,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-02 | Phase 6 | Pending |
 | SAFE-03 | Phase 6 | Pending |
 | SAFE-04 | Phase 6 | Pending |
-| SENT-01 | Phase 5 | Pending |
+| SENT-01 | Phase 5 | Complete |
 | SENT-02 | Phase 7 | Pending |
 | SENT-03 | Phase 7 | Pending |
 | SENT-04 | Phase 7 | Pending |
-| INFRA-01 | Phase 5 | Pending |
+| INFRA-01 | Phase 5 | Complete |
 | INFRA-02 | Phase 5 | Pending |
 | INFRA-03 | Phase 6 | Pending |
 
