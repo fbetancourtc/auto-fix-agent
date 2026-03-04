@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
+  "functions": {
+    "api/webhook.ts": {
+      "maxDuration": 30
+    }
+  }
+}
