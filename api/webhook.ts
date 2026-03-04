@@ -14,6 +14,7 @@ import { waitUntil } from '@vercel/functions';
 import { verifyWebhookSignature } from './lib/verify.js';
 import { extractHeaders, type WebhookHeaders } from './lib/types.js';
 import { flushSentry } from './lib/sentry.js';
+import { routeEvent } from './lib/router.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -75,7 +76,7 @@ async function processEvent(
       },
     });
 
-    // TODO(phase-05-plan-02): Route to event handlers
+    await routeEvent(headers.eventType, payload);
   } catch (error) {
     Sentry.captureException(error);
   } finally {

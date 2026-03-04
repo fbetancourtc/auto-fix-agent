@@ -1,0 +1,42 @@
+/**
+ * Event filtering functions for GitHub webhook payloads.
+ *
+ * These filters gate handler dispatch in the router -- only events matching
+ * the auto-fix workflow proceed to processing.
+ *
+ * Accepts `any` for payload params (loose typing at filter boundary).
+ * Full payload typing via @octokit/webhooks-types deferred to Phase 6.
+ */
+
+/** The label name used across v1.0/v1.1 to identify auto-fix PRs. */
+const AUTO_FIX_LABEL = 'auto-fix';
+
+/**
+ * Check whether a pull_request event payload has the auto-fix label.
+ *
+ * @param payload - GitHub pull_request webhook payload (typed as any at filter boundary)
+ * @returns true if the PR's labels array contains a label with name === 'auto-fix'
+ */
+export function isAutoFixLabeledPR(payload: any): boolean {
+  const labels: Array<{ name?: string }> | undefined = payload.pull_request?.labels;
+  if (!labels || labels.length === 0) {
+    return false;
+  }
+  return labels.some((label) => label.name === AUTO_FIX_LABEL);
+}
+
+/**
+ * Check whether a pull_request_review event is on an auto-fix labeled PR.
+ *
+ * Reviews on auto-fix PRs have the PR labels available in payload.pull_request.labels.
+ *
+ * @param payload - GitHub pull_request_review webhook payload (typed as any at filter boundary)
+ * @returns true if the reviewed PR has the auto-fix label
+ */
+export function isReviewOnAutoFixPR(payload: any): boolean {
+  const labels: Array<{ name?: string }> | undefined = payload.pull_request?.labels;
+  if (!labels || labels.length === 0) {
+    return false;
+  }
+  return labels.some((label) => label.name === AUTO_FIX_LABEL);
+}
