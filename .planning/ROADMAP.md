@@ -46,11 +46,11 @@
   3. Sentry captures an error when the webhook handler throws an unexpected exception
   4. The Vercel function responds 200 within 5 seconds on cold start and defers processing via `waitUntil()`
   5. Events that are not `workflow_run.completed`, auto-fix-labeled PRs, or reviews on those PRs are filtered out and not processed
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Project scaffolding, signature verification, Sentry init, and deployable handler foundation
+- [ ] 05-02-PLAN.md — Event routing, filtering, handler stubs, ONBOARDING docs, and deployment verification
 
 ### Phase 6: Event Processing, Metrics, and Deduplication
 **Goal**: Every auto-fix pipeline event produces structured Sentry telemetry for operations health, value metrics, and safety signals, with deduplication preventing inflated counts
@@ -94,6 +94,6 @@ Phases execute in numeric order: 5 → 6 → 7
 | 2.2 Retroactive Phase 1 Verification | v1.0 | 1/1 | Complete | 2026-03-02 |
 | 3. Multi-Repo Rollout | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
-| 5. Webhook Receiver and Security Foundation | v1.2 | 0/0 | Not started | - |
+| 5. Webhook Receiver and Security Foundation | v1.2 | 0/2 | Planning complete | - |
 | 6. Event Processing, Metrics, and Deduplication | v1.2 | 0/0 | Not started | - |
 | 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 0/0 | Not started | - |
