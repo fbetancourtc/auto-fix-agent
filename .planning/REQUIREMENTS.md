@@ -18,24 +18,24 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 ### Operations Health
 
-- [ ] **OPS-01**: Trigger frequency tracked as Sentry counter per `workflow_run.completed` event, tagged by repository
-- [ ] **OPS-02**: Fix outcome breakdown tracked by outcome type (fix_pr_created, no_fix, escalated, flaky_skipped, circuit_breaker)
+- [x] **OPS-01**: Trigger frequency tracked as Sentry counter per `workflow_run.completed` event, tagged by repository
+- [x] **OPS-02**: Fix outcome breakdown tracked by outcome type (fix_pr_created, no_fix, escalated, flaky_skipped, circuit_breaker)
 - [ ] **OPS-03**: Per-repo health scores visible in Sentry dashboard grouped by repository tag
-- [ ] **OPS-04**: Run duration tracked as Sentry distribution metric from workflow_run timing data
+- [x] **OPS-04**: Run duration tracked as Sentry distribution metric from workflow_run timing data
 
 ### Value Metrics
 
-- [ ] **VAL-01**: Mean-time-to-fix (MTTR) computed from CI failure timestamp to fix PR creation, tracked as Sentry distribution
-- [ ] **VAL-02**: PR acceptance rate tracked from `pull_request.closed` events where merged=true and label is auto-fix
-- [ ] **VAL-03**: Cost per fix tracked as Sentry distribution metric (estimated from run duration, labeled as estimate)
-- [ ] **VAL-04**: Monthly spend vs budget tracked as Sentry gauge with cumulative USD
+- [x] **VAL-01**: Mean-time-to-fix (MTTR) computed from CI failure timestamp to fix PR creation, tracked as Sentry distribution
+- [x] **VAL-02**: PR acceptance rate tracked from `pull_request.closed` events where merged=true and label is auto-fix
+- [x] **VAL-03**: Cost per fix tracked as Sentry distribution metric (estimated from run duration, labeled as estimate)
+- [x] **VAL-04**: Monthly spend vs budget tracked as Sentry gauge with cumulative USD
 
 ### Safety Signals
 
-- [ ] **SAFE-01**: Budget burn rate visualized as cumulative time-series gauge in Sentry
-- [ ] **SAFE-02**: Circuit breaker trip rate tracked as Sentry counter on circuit breaker events
-- [ ] **SAFE-03**: Scope violation detection tracked as Sentry counter on validate-diff.sh reverts
-- [ ] **SAFE-04**: Escalation frequency tracked as Sentry counter on needs-human escalations
+- [x] **SAFE-01**: Budget burn rate visualized as cumulative time-series gauge in Sentry
+- [x] **SAFE-02**: Circuit breaker trip rate tracked as Sentry counter on circuit breaker events
+- [x] **SAFE-03**: Scope violation detection tracked as Sentry counter on validate-diff.sh reverts
+- [x] **SAFE-04**: Escalation frequency tracked as Sentry counter on needs-human escalations
 
 ### Sentry Integration
 
@@ -48,7 +48,7 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 - [x] **INFRA-01**: Vercel project deployed from auto-fix-agent repo with environment variables scoped to Production only
 - [x] **INFRA-02**: GitHub org-level webhooks configured for all 3 organizations pointing to Vercel URL
-- [ ] **INFRA-03**: Upstash Redis (free tier) provides deduplication store for `X-GitHub-Delivery` GUIDs
+- [x] **INFRA-03**: Upstash Redis (free tier) provides deduplication store for `X-GitHub-Delivery` GUIDs
 
 ## Future Requirements
 
@@ -92,25 +92,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HOOK-04 | Phase 6 | Pending |
 | HOOK-05 | Phase 5 | Complete |
 | HOOK-06 | Phase 5 | Complete |
-| OPS-01 | Phase 6 | Pending |
-| OPS-02 | Phase 6 | Pending |
+| OPS-01 | Phase 6 | Complete |
+| OPS-02 | Phase 6 | Complete |
 | OPS-03 | Phase 6 | Pending |
-| OPS-04 | Phase 6 | Pending |
-| VAL-01 | Phase 6 | Pending |
-| VAL-02 | Phase 6 | Pending |
-| VAL-03 | Phase 6 | Pending |
-| VAL-04 | Phase 6 | Pending |
-| SAFE-01 | Phase 6 | Pending |
-| SAFE-02 | Phase 6 | Pending |
-| SAFE-03 | Phase 6 | Pending |
-| SAFE-04 | Phase 6 | Pending |
+| OPS-04 | Phase 6 | Complete |
+| VAL-01 | Phase 6 | Complete |
+| VAL-02 | Phase 6 | Complete |
+| VAL-03 | Phase 6 | Complete |
+| VAL-04 | Phase 6 | Complete |
+| SAFE-01 | Phase 6 | Complete |
+| SAFE-02 | Phase 6 | Complete |
+| SAFE-03 | Phase 6 | Complete |
+| SAFE-04 | Phase 6 | Complete |
 | SENT-01 | Phase 5 | Complete |
 | SENT-02 | Phase 7 | Pending |
 | SENT-03 | Phase 7 | Pending |
 | SENT-04 | Phase 7 | Pending |
 | INFRA-01 | Phase 5 | Complete |
 | INFRA-02 | Phase 5 | Complete |
-| INFRA-03 | Phase 6 | Pending |
+| INFRA-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 25 total

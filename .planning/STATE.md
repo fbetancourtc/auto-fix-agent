@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Monitoring & Observability
 status: executing
-stopped_at: Phase 06 context gathered
-last_updated: "2026-03-06T19:35:33.260Z"
-last_activity: 2026-03-06 — Completed Plan 05-02 (event routing, filtering, handler stubs)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-06T20:16:33.955Z"
+last_activity: 2026-03-06 — Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_plans: 5
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 Milestone: v1.2 Monitoring & Observability
 Phase: 6 of 7 (Event Processing, Metrics, and Deduplication)
-Plan: 0 of TBD in current phase
+Plan: 1 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-06 — Completed Plan 05-02 (event routing, filtering, handler stubs)
+Last activity: 2026-03-06 — Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
 
-Progress: [██████████] 100% (Phase 5 complete)
+Progress: [██████░░░░] 60% (Phase 6: 1/3 plans)
 
 ## Performance Metrics
 
@@ -52,6 +52,9 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - (05-02) Loose typing (any) at filter boundary -- full @octokit/webhooks-types deferred to Phase 6
 - (05-02) Unrecognized events return 200 with breadcrumb only, no Sentry error (prevents quota waste)
 - (05-02) Handler stubs emit Sentry breadcrumbs only -- metric emission deferred to Phase 6
+- (06-01) Sentry v10 uses metrics.count() not increment(), attributes not tags -- corrected from RESEARCH.md patterns
+- (06-01) MetricTags needs index signature [key: string]: string for Sentry attributes compatibility
+- (06-01) Used class-based mock for @upstash/redis Redis constructor to avoid vitest mock warnings
 
 ### Blockers/Concerns (carried from v1.1)
 
@@ -67,6 +70,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last activity: 2026-03-06 - Completed Plan 05-02 (event routing, filtering, handler stubs)
-Stopped at: Phase 06 context gathered
-Resume file: .planning/phases/06-event-processing-metrics-and-deduplication/06-CONTEXT.md
+Last activity: 2026-03-06 - Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
