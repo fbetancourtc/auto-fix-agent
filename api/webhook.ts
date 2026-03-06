@@ -15,6 +15,7 @@ import { verifyWebhookSignature } from './lib/verify.js';
 import { extractHeaders, type WebhookHeaders } from './lib/types.js';
 import { flushSentry } from './lib/sentry.js';
 import { routeEvent } from './lib/router.js';
+import { isDuplicate } from './lib/dedup.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -75,6 +76,16 @@ async function processEvent(
         repository: repository?.full_name as string | undefined,
       },
     });
+
+    // Dedup guard: skip processing if this delivery ID has already been seen.
+    // Fail-open: if Redis is unavailable, isDuplicate returns false (processes event).
+    if (await isDuplicate(headers.deliveryId)) {
+      Sentry.addBreadcrumb({
+        category: 'webhook.dedup',
+        message: `Duplicate delivery skipped: ${headers.deliveryId}`,
+      });
+      return;
+    }
 
     await routeEvent(headers.eventType, payload);
   } catch (error) {
