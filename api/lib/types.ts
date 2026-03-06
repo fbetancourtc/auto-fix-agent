@@ -24,6 +24,25 @@ export interface WebhookHeaders {
 }
 
 /**
+ * Fix outcome categories for the auto-fix pipeline.
+ * Exactly 5 categories per REQUIREMENTS.md OPS-02.
+ */
+export type FixOutcome =
+  | 'fix_pr_created'
+  | 'no_fix'
+  | 'escalated'
+  | 'flaky_skipped'
+  | 'circuit_breaker';
+
+/** Tags attached to every Sentry metric for dashboard slicing. */
+export interface MetricTags {
+  repo: string;
+  org: string;
+  stack: string;
+  [key: string]: string;
+}
+
+/**
  * Extract GitHub webhook headers from a Request's Headers object.
  *
  * Reads:
