@@ -9,11 +9,19 @@
  * they never produce errors (prevents Sentry quota waste).
  */
 import * as Sentry from '@sentry/node';
+import type {
+  WorkflowRunEvent,
+  PullRequestEvent,
+  PullRequestReviewEvent,
+} from '@octokit/webhooks-types';
 import type { ProcessEventResult } from './types.js';
 import { isAutoFixLabeledPR, isReviewOnAutoFixPR } from './filters.js';
 import { handleWorkflowRun } from './handlers/workflow-run.js';
 import { handlePullRequest } from './handlers/pull-request.js';
 import { handleReview } from './handlers/review.js';
+
+/** Union of all webhook payload types this router handles. */
+export type WebhookPayload = WorkflowRunEvent | PullRequestEvent | PullRequestReviewEvent;
 
 /**
  * Route a webhook event to the appropriate handler.
@@ -24,44 +32,47 @@ import { handleReview } from './handlers/review.js';
  */
 export async function routeEvent(
   eventType: string,
-  payload: any,
+  payload: WebhookPayload,
 ): Promise<ProcessEventResult> {
   const action = (payload.action as string) ?? 'unknown';
 
   switch (eventType) {
     case 'workflow_run': {
-      if (payload.action !== 'completed') {
+      const wfPayload = payload as WorkflowRunEvent;
+      if (wfPayload.action !== 'completed') {
         Sentry.addBreadcrumb({
           category: 'webhook.filter',
-          message: `Skipped workflow_run.${payload.action}`,
+          message: `Skipped workflow_run.${wfPayload.action}`,
         });
         return { eventType, action, processed: false, reason: 'action not completed' };
       }
-      await handleWorkflowRun(payload);
+      await handleWorkflowRun(wfPayload);
       return { eventType, action, processed: true };
     }
 
     case 'pull_request': {
-      if (!isAutoFixLabeledPR(payload)) {
+      const prPayload = payload as PullRequestEvent;
+      if (!isAutoFixLabeledPR(prPayload)) {
         Sentry.addBreadcrumb({
           category: 'webhook.filter',
           message: 'Skipped PR without auto-fix label',
         });
         return { eventType, action, processed: false, reason: 'no auto-fix label' };
       }
-      await handlePullRequest(payload);
+      await handlePullRequest(prPayload);
       return { eventType, action, processed: true };
     }
 
     case 'pull_request_review': {
-      if (!isReviewOnAutoFixPR(payload)) {
+      const reviewPayload = payload as PullRequestReviewEvent;
+      if (!isReviewOnAutoFixPR(reviewPayload)) {
         Sentry.addBreadcrumb({
           category: 'webhook.filter',
           message: 'Skipped review on non-auto-fix PR',
         });
         return { eventType, action, processed: false, reason: 'not auto-fix PR' };
       }
-      await handleReview(payload);
+      await handleReview(reviewPayload);
       return { eventType, action, processed: true };
     }
 

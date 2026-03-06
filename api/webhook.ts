@@ -14,7 +14,7 @@ import { waitUntil } from '@vercel/functions';
 import { verifyWebhookSignature } from './lib/verify.js';
 import { extractHeaders, type WebhookHeaders } from './lib/types.js';
 import { flushSentry } from './lib/sentry.js';
-import { routeEvent } from './lib/router.js';
+import { routeEvent, type WebhookPayload } from './lib/router.js';
 import { isDuplicate } from './lib/dedup.js';
 
 export default {
@@ -87,7 +87,7 @@ async function processEvent(
       return;
     }
 
-    await routeEvent(headers.eventType, payload);
+    await routeEvent(headers.eventType, payload as WebhookPayload);
   } catch (error) {
     Sentry.captureException(error);
   } finally {
