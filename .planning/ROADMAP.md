@@ -62,11 +62,12 @@ Plans:
   3. Redelivering the same GitHub webhook event (same `X-GitHub-Delivery` GUID) does not produce duplicate metrics
   4. Safety signal counters (circuit breaker trips, scope violations, escalations) increment when their respective events arrive
   5. Monthly spend gauge and budget burn rate are visible as cumulative values in Sentry after processing cost-related events
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md — Metrics module, dedup module, and test infrastructure (vitest + @upstash/redis)
+- [ ] 06-02-PLAN.md — Strong-typed handlers with full metric emission wiring
+- [ ] 06-03-PLAN.md — Dedup integration into processEvent and deployment verification
 
 ### Phase 7: Dashboard, Cron Monitors, and Alert Rules
 **Goal**: Sentry surfaces actionable operational visibility through dashboard panels, silence detection per repo, and threshold-based alerts
@@ -95,5 +96,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | 3. Multi-Repo Rollout | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 5. Webhook Receiver and Security Foundation | v1.2 | 2/2 | Complete | 2026-03-06 |
-| 6. Event Processing, Metrics, and Deduplication | v1.2 | 0/0 | Not started | - |
+| 6. Event Processing, Metrics, and Deduplication | v1.2 | 0/3 | Not started | - |
 | 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 0/0 | Not started | - |
