@@ -11,10 +11,10 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 - [x] **HOOK-01**: Vercel serverless function (`/api/webhook.ts`) receives GitHub webhook events and responds 200 within 5 seconds
 - [x] **HOOK-02**: HMAC-SHA256 signature verification rejects unsigned or tampered requests before any processing
-- [ ] **HOOK-03**: Event type routing dispatches `workflow_run`, `pull_request`, and `pull_request_review` events to appropriate handlers
+- [x] **HOOK-03**: Event type routing dispatches `workflow_run`, `pull_request`, and `pull_request_review` events to appropriate handlers
 - [ ] **HOOK-04**: Idempotency handling via `X-GitHub-Delivery` header prevents duplicate event processing
 - [x] **HOOK-05**: Async processing via `waitUntil()` defers Sentry calls after immediate 200 response
-- [ ] **HOOK-06**: Event filtering limits processing to `workflow_run.completed`, PRs with `auto-fix` label, and reviews on those PRs
+- [x] **HOOK-06**: Event filtering limits processing to `workflow_run.completed`, PRs with `auto-fix` label, and reviews on those PRs
 
 ### Operations Health
 
@@ -47,7 +47,7 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 ### Infrastructure
 
 - [x] **INFRA-01**: Vercel project deployed from auto-fix-agent repo with environment variables scoped to Production only
-- [ ] **INFRA-02**: GitHub org-level webhooks configured for all 3 organizations pointing to Vercel URL
+- [x] **INFRA-02**: GitHub org-level webhooks configured for all 3 organizations pointing to Vercel URL
 - [ ] **INFRA-03**: Upstash Redis (free tier) provides deduplication store for `X-GitHub-Delivery` GUIDs
 
 ## Future Requirements
@@ -88,10 +88,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | HOOK-01 | Phase 5 | Complete |
 | HOOK-02 | Phase 5 | Complete |
-| HOOK-03 | Phase 5 | Pending |
+| HOOK-03 | Phase 5 | Complete |
 | HOOK-04 | Phase 6 | Pending |
 | HOOK-05 | Phase 5 | Complete |
-| HOOK-06 | Phase 5 | Pending |
+| HOOK-06 | Phase 5 | Complete |
 | OPS-01 | Phase 6 | Pending |
 | OPS-02 | Phase 6 | Pending |
 | OPS-03 | Phase 6 | Pending |
@@ -109,7 +109,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SENT-03 | Phase 7 | Pending |
 | SENT-04 | Phase 7 | Pending |
 | INFRA-01 | Phase 5 | Complete |
-| INFRA-02 | Phase 5 | Pending |
+| INFRA-02 | Phase 5 | Complete |
 | INFRA-03 | Phase 6 | Pending |
 
 **Coverage:**

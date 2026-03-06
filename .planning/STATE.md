@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Monitoring & Observability
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-04T14:10:23.750Z"
-last_activity: 2026-03-04 — Completed Plan 05-01 (webhook handler foundation)
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-06T17:39:54.959Z"
+last_activity: 2026-03-06 — Completed Plan 05-02 (event routing, filtering, handler stubs)
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** When CI fails on any monitored repo, an AI agent automatically fixes the code and opens a PR -- reducing MTTF from hours to minutes.
-**Current focus:** v1.2 Phase 5 -- Webhook Receiver and Security Foundation
+**Current focus:** v1.2 Phase 6 -- Event Processing, Metrics, and Deduplication
 
 ## Current Position
 
 Milestone: v1.2 Monitoring & Observability
-Phase: 5 of 7 (Webhook Receiver and Security Foundation)
-Plan: 1 of 2 in current phase
+Phase: 6 of 7 (Event Processing, Metrics, and Deduplication)
+Plan: 0 of TBD in current phase
 Status: Executing
-Last activity: 2026-03-04 — Completed Plan 05-01 (webhook handler foundation)
+Last activity: 2026-03-06 — Completed Plan 05-02 (event routing, filtering, handler stubs)
 
-Progress: [████████░░] 88%
+Progress: [██████████] 100% (Phase 5 complete)
 
 ## Performance Metrics
 
@@ -49,6 +49,9 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - (05-01) Used .js extensions in TS imports for ESM compat with Vercel bundler
 - (05-01) Side-effect Sentry import first, then namespace import for API usage
 - (05-01) Generic payload typing in processEvent -- full webhook-types deferred to Plan 02
+- (05-02) Loose typing (any) at filter boundary -- full @octokit/webhooks-types deferred to Phase 6
+- (05-02) Unrecognized events return 200 with breadcrumb only, no Sentry error (prevents quota waste)
+- (05-02) Handler stubs emit Sentry breadcrumbs only -- metric emission deferred to Phase 6
 
 ### Blockers/Concerns (carried from v1.1)
 
@@ -64,6 +67,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed Plan 05-01 (webhook handler foundation)
-Stopped at: Completed 05-01-PLAN.md
-Resume file: .planning/phases/05-webhook-receiver-and-security-foundation/05-02-PLAN.md
+Last activity: 2026-03-06 - Completed Plan 05-02 (event routing, filtering, handler stubs)
+Stopped at: Completed 05-02-PLAN.md
+Resume file: Phase 6 planning needed
