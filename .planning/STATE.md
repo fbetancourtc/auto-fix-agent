@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Monitoring & Observability
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-03-06T20:16:33.955Z"
-last_activity: 2026-03-06 — Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-03-06T20:21:30.000Z"
+last_activity: 2026-03-06 — Completed Plan 06-02 (handler wiring and router strong types)
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 Milestone: v1.2 Monitoring & Observability
 Phase: 6 of 7 (Event Processing, Metrics, and Deduplication)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-06 — Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
+Last activity: 2026-03-06 — Completed Plan 06-02 (handler wiring and router strong types)
 
-Progress: [██████░░░░] 60% (Phase 6: 1/3 plans)
+Progress: [████████░░] 80% (Phase 6: 2/3 plans)
 
 ## Performance Metrics
 
@@ -55,6 +55,9 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - (06-01) Sentry v10 uses metrics.count() not increment(), attributes not tags -- corrected from RESEARCH.md patterns
 - (06-01) MetricTags needs index signature [key: string]: string for Sentry attributes compatibility
 - (06-01) Used class-based mock for @upstash/redis Redis constructor to avoid vitest mock warnings
+- (06-02) Exported WebhookPayload union type from router for caller type assertion at JSON.parse boundary
+- (06-02) MTTR emitted from workflow-run handler using run duration as proxy (run_started_at to updated_at)
+- (06-02) Closed-without-merge PR treated as scope violation signal (SAFE-03) in addition to rejection metric
 
 ### Blockers/Concerns (carried from v1.1)
 
@@ -70,6 +73,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last activity: 2026-03-06 - Completed Plan 06-01 (metrics module, dedup module, test infrastructure)
-Stopped at: Completed 06-01-PLAN.md
+Last activity: 2026-03-06 - Completed Plan 06-02 (handler wiring and router strong types)
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None

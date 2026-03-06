@@ -65,8 +65,8 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Metrics module, dedup module, and test infrastructure (vitest + @upstash/redis)
-- [ ] 06-02-PLAN.md — Strong-typed handlers with full metric emission wiring
+- [x] 06-01-PLAN.md — Metrics module, dedup module, and test infrastructure (vitest + @upstash/redis)
+- [x] 06-02-PLAN.md — Strong-typed handlers with full metric emission wiring
 - [ ] 06-03-PLAN.md — Dedup integration into processEvent and deployment verification
 
 ### Phase 7: Dashboard, Cron Monitors, and Alert Rules
@@ -96,5 +96,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | 3. Multi-Repo Rollout | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 5. Webhook Receiver and Security Foundation | v1.2 | 2/2 | Complete | 2026-03-06 |
-| 6. Event Processing, Metrics, and Deduplication | v1.2 | 0/3 | Not started | - |
+| 6. Event Processing, Metrics, and Deduplication | v1.2 | 2/3 | In progress | - |
 | 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 0/0 | Not started | - |
