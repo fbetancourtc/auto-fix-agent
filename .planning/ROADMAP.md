@@ -32,7 +32,7 @@
 
 - [x] **Phase 5: Webhook Receiver and Security Foundation** — Deployed, secure Vercel function receiving GitHub webhooks with Sentry error capture (completed 2026-03-06)
 - [ ] **Phase 6: Event Processing, Metrics, and Deduplication** — Full telemetry emission for operations health, value metrics, and safety signals with deduplication
-- [ ] **Phase 7: Dashboard, Cron Monitors, and Alert Rules** — Sentry dashboard panels, per-repo silence detection, and proactive alerting
+- [x] **Phase 7: Dashboard, Cron Monitors, and Alert Rules** — Sentry dashboard panels, per-repo silence detection, and proactive alerting (completed 2026-03-10)
 
 ## Phase Details
 
@@ -77,7 +77,7 @@ Plans:
   1. A Sentry Custom Dashboard exists with Operations Health, Value Metrics, and Safety Signal panels showing live data
   2. Each enrolled repo has a Sentry Cron Monitor that marks the repo unhealthy if no events arrive within 7 days
   3. Sentry alert rules fire test notifications when success rate drops, cost spikes, or a repo goes silent
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 07-01-PLAN.md — Cron monitor heartbeat module with per-repo silence detection via captureCheckIn
@@ -98,4 +98,4 @@ Phases execute in numeric order: 5 → 6 → 7
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 5. Webhook Receiver and Security Foundation | v1.2 | 2/2 | Complete | 2026-03-06 |
 | 6. Event Processing, Metrics, and Deduplication | v1.2 | 3/3 | Complete | 2026-03-10 |
-| 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 0/2 | Planning | - |
+| 7. Dashboard, Cron Monitors, and Alert Rules | 2/2 | Complete   | 2026-03-10 | - |
