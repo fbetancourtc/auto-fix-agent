@@ -38,6 +38,7 @@
     telegram: {
       enabled: true,
       dmPolicy: "allowlist",
+      allowFrom: ["6437545150"],
       groupPolicy: "disabled"
     }
   },
@@ -46,7 +47,9 @@
     providers: {
       anthropic: {
         baseUrl: "https://api.anthropic.com",
-        models: ["claude-opus-4-6", "claude-sonnet-4-6"]
+        models: [
+          { id: "claude-opus-4-6", name: "Claude Opus 4.6" }
+        ]
       }
     }
   },
