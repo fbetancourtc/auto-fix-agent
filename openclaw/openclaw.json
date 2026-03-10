@@ -25,7 +25,7 @@
     list: [
       {
         id: "code-quality",
-        name: "CodeQual",
+        name: "Bumblebee",
         default: true,
         model: "anthropic/claude-opus-4-6",
         skills: ["code-quality"],

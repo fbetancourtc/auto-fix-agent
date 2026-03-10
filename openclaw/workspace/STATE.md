@@ -1,4 +1,4 @@
-# CodeQual — State
+# Bumblebee — State
 
 ## Current Status
 - **Active Interventions:** None
@@ -32,4 +32,4 @@ _(Updated after multiple interventions reveal recurring issues)_
 _(Active blockers preventing work)_
 
 ---
-*Updated automatically by CodeQual after each intervention*
+*Updated automatically by Bumblebee after each intervention*
