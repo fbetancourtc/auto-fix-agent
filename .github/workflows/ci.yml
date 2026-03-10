@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, qa, main]
+  pull_request:
+    branches: [develop, qa, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Validate bash scripts
+        run: |
+          for script in scripts/*.sh; do
+            echo "Checking $script..."
+            bash -n "$script"
+          done
+          echo "All scripts valid"
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for secrets in code
+        run: |
+          FAIL=false
+          # Check for hardcoded secrets patterns in source files
+          for pattern in "ghp_" "ghs_" "github_pat_" "sk-ant-" "ANTHROPIC_API_KEY=" "SENTRY_AUTH_TOKEN="; do
+            if grep -r "$pattern" api/ scripts/ --include="*.ts" --include="*.sh" -l 2>/dev/null; then
+              echo "FAIL: potential secret pattern '$pattern' found in source"
+              FAIL=true
+            fi
+          done
+          if [ "$FAIL" = true ]; then
+            exit 1
+          fi
+          echo "PASS: no hardcoded secrets detected"

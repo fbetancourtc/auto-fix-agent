@@ -1,0 +1,93 @@
+name: Deploy Production
+
+# Deploys to Vercel Production when code lands on main.
+# This is the ONLY path to production — enforced by workflow trigger.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vercel.json'
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false  # Never cancel a production deploy mid-flight
+
+jobs:
+  verify:
+    name: Pre-deploy Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    name: Deploy to Production
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Deploy to Vercel (Production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel
+          vercel --prod --token="$VERCEL_TOKEN" --yes
+          echo "Production deployment complete"
+
+      - name: Smoke test
+        env:
+          DEPLOY_URL: ${{ vars.VERCEL_PRODUCTION_URL }}
+        run: |
+          # If DEPLOY_URL not set, skip smoke test
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "VERCEL_PRODUCTION_URL not configured — skipping smoke test"
+            exit 0
+          fi
+
+          # GET should return 405 (only POST allowed)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL/api/webhook")
+          if [ "$STATUS" = "405" ]; then
+            echo "PASS: GET returns 405 (method not allowed)"
+          else
+            echo "WARN: Expected 405, got $STATUS (may be expected if env gate is active)"
+          fi
+
+          # POST without signature should return 401
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "$DEPLOY_URL/api/webhook" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          if [ "$STATUS" = "401" ]; then
+            echo "PASS: POST without signature returns 401"
+          else
+            echo "FAIL: Expected 401, got $STATUS"
+            exit 1
+          fi
