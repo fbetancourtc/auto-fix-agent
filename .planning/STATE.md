@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Monitoring & Observability
 status: executing
-stopped_at: Completed 06-03-PLAN.md (Phase 6 complete)
-last_updated: "2026-03-10T03:45:00.000Z"
-last_activity: 2026-03-10 — Completed Plan 06-03 (dedup integration closure) and Phase 6
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-10T04:11:43.765Z"
+last_activity: 2026-03-10 — Completed Plan 07-01 (cron monitor heartbeats)
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
   percent: 100
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 Milestone: v1.2 Monitoring & Observability
 Phase: 7 of 7 (Dashboard, Cron Monitors, and Alert Rules)
-Plan: 0 of TBD in current phase
-Status: Not started
-Last activity: 2026-03-10 — Completed Phase 6 (dedup integration closure)
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-03-10 — Completed Plan 07-01 (cron monitor heartbeats)
 
-Progress: [██████████] 100% (Phase 6: 3/3 plans) | Phase 7: not started
+Progress: [██████████] 100% (Phase 7: 1/2 plans)
 
 ## Performance Metrics
 
@@ -58,6 +58,8 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - (06-02) Exported WebhookPayload union type from router for caller type assertion at JSON.parse boundary
 - (06-02) MTTR emitted from workflow-run handler using run duration as proxy (run_started_at to updated_at)
 - (06-02) Closed-without-merge PR treated as scope violation signal (SAFE-03) in addition to rejection metric
+- (07-01) Used interval schedule (7-day) instead of crontab for rolling-window silence detection
+- (07-01) Heartbeat gated on result.processed to avoid false positives from filtered/skipped events
 
 ### Blockers/Concerns (carried from v1.1)
 
@@ -73,6 +75,6 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 
 ## Session Continuity
 
-Last activity: 2026-03-10 - Completed Phase 6 (dedup integration closure + handler test gap identified)
-Stopped at: Phase 6 complete, Phase 7 not started
+Last activity: 2026-03-10 - Completed Plan 07-01 (cron monitor heartbeats)
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

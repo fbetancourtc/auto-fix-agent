@@ -41,7 +41,7 @@ Requirements for Monitoring & Observability milestone. Each maps to roadmap phas
 
 - [x] **SENT-01**: Sentry SDK initialized in webhook function with error capture for receiver failures
 - [ ] **SENT-02**: Custom Sentry dashboard with Operations Health, Value Metrics, and Safety Signal panels
-- [ ] **SENT-03**: Sentry Cron Monitors per enrolled repo detect repos that stop triggering events
+- [x] **SENT-03**: Sentry Cron Monitors per enrolled repo detect repos that stop triggering events
 - [ ] **SENT-04**: Sentry alert rules fire when success rate drops, cost spikes, or a repo goes silent
 
 ### Infrastructure
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-04 | Phase 6 | Complete |
 | SENT-01 | Phase 5 | Complete |
 | SENT-02 | Phase 7 | Pending |
-| SENT-03 | Phase 7 | Pending |
+| SENT-03 | Phase 7 | Complete |
 | SENT-04 | Phase 7 | Pending |
 | INFRA-01 | Phase 5 | Complete |
 | INFRA-02 | Phase 5 | Complete |
