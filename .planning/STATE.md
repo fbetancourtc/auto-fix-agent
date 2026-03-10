@@ -33,6 +33,15 @@ Last activity: 2026-03-10 — Completed Plan 07-02 (dashboard and alert rules se
 
 Progress: [██████████] 100% (Phase 7: 2/2 plans) -- v1.2 COMPLETE
 
+## Infrastructure Readiness (2026-03-10)
+
+All production blockers resolved:
+- [x] Vercel env vars: GITHUB_WEBHOOK_SECRET, SENTRY_DSN, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+- [x] GitHub repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, VERCEL_PRODUCTION_URL
+- [x] Sentry project created: auto-fix-agent (liftit-inc org, Node.js)
+- [x] Upstash Redis created: auto-fix-agent-dedup (us-east-1, Free tier)
+- [x] Webhooks active on 3 personal repos (200 OK)
+
 ## Performance Metrics
 
 **Velocity (from v1.0 + v1.1):**
@@ -70,10 +79,18 @@ See PROJECT.md Key Decisions table for full history with outcomes.
 - Liftitapp org secrets pending admin action
 - geocoding-liftit-api needs push access granted before auto-fix-caller.yml can be deployed
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Fix milestone v1.1 audit gaps (Phase 3 verification) | 2026-03-03 | — | [1-fix-milestone-v1-1-audit-gaps-phase-3-ve](./quick/1-fix-milestone-v1-1-audit-gaps-phase-3-ve/) |
+| 2 | Deploy the 14 Liftitapp repos | 2026-03-03 | — | [2-deploy-the-14-liftitapp-repos](./quick/2-deploy-the-14-liftitapp-repos/) |
+| 3 | Document production blocker resolution — Vercel env vars verified | 2026-03-10 | 00a0d96 | [3-document-production-blocker-resolution-v](./quick/3-document-production-blocker-resolution-v/) |
+
 ### Research Flags (v1.2)
 
 - Phase 6: `waitUntil()` import from `@vercel/functions` -- verify behavior on Hobby plan under Fluid Compute
-- Phase 6: Upstash Redis vs Vercel KV for dedup store -- confirm lower-friction binding approach
+- ~~Phase 6: Upstash Redis vs Vercel KV for dedup store~~ -- RESOLVED: chose Upstash Redis (auto-fix-agent-dedup, us-east-1, Free)
 
 ## Session Continuity
 

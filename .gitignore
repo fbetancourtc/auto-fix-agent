@@ -4,3 +4,8 @@ dist/
 *.local
 .claude/
 .openclaw/
+.playwright-mcp/
+.serena/
+.DS_Store
+.vercel/
+Untitled
