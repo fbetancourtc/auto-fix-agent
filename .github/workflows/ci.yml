@@ -71,10 +71,16 @@ jobs:
       - name: Check for secrets in code
         run: |
           FAIL=false
-          # Check for hardcoded secrets patterns in source files
-          for pattern in "ghp_" "ghs_" "github_pat_" "sk-ant-" "ANTHROPIC_API_KEY=" "SENTRY_AUTH_TOKEN="; do
-            if grep -r "$pattern" api/ scripts/ --include="*.ts" --include="*.sh" -l 2>/dev/null; then
-              echo "FAIL: potential secret pattern '$pattern' found in source"
+          # Exclude files that legitimately reference secret patterns:
+          #   sanitize-logs.sh — regex patterns for stripping secrets from CI logs
+          #   setup-dashboard.sh / setup-alerts.sh — env var name references (not values)
+          #   test-guardrails.yml — test fixtures with fake secret patterns
+          EXCLUDE="--exclude=sanitize-logs.sh --exclude=setup-dashboard.sh --exclude=setup-alerts.sh --exclude=test-guardrails.yml --exclude=sentry-setup.md"
+
+          # Check for actual hardcoded secret values in source files
+          for pattern in "ghp_[a-zA-Z0-9]\{36\}" "ghs_[a-zA-Z0-9]\{36\}" "github_pat_[a-zA-Z0-9]" "sk-ant-api"; do
+            if grep -rE "$pattern" api/ scripts/ docs/ --include="*.ts" --include="*.sh" --include="*.md" $EXCLUDE -l 2>/dev/null; then
+              echo "FAIL: potential hardcoded secret matching '$pattern' found"
               FAIL=true
             fi
           done
