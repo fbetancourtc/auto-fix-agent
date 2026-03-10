@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# setup.sh — Deploy CodeQual agent to local OpenClaw instance
+# setup.sh — Deploy Bumblebee agent to local OpenClaw instance
 # Run this script ON the machine where OpenClaw is installed.
 #
 # Usage:
@@ -14,7 +14,7 @@ OPENCLAW_DIR="$HOME/.openclaw"
 WORKSPACE_DIR="$OPENCLAW_DIR/workspace"
 SKILLS_DIR="$WORKSPACE_DIR/skills"
 
-echo "=== CodeQual Agent Setup ==="
+echo "=== Bumblebee Agent Setup ==="
 echo ""
 
 # 1. Create directory structure

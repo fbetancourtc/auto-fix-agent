@@ -1,7 +1,11 @@
 {
-  // OpenClaw Configuration — Code Quality Agent
+  // OpenClaw Configuration — Bumblebee (Auto-Fix Agent)
   // Format: JSON5 (comments and trailing commas OK)
   // Deploy to: ~/.openclaw/openclaw.json
+  //
+  // NOTE: This is a template. The deployed version at ~/.openclaw/openclaw.json
+  // may have additional agents (e.g. Itachi/main), telegram accounts, and secrets.
+  // Running setup.sh merges this into the deployed config — it does NOT overwrite.
 
   gateway: {
     mode: "local",
@@ -24,12 +28,11 @@
     },
     list: [
       {
-        id: "code-quality",
-        name: "CodeQual",
-        default: true,
+        id: "autofix",
+        name: "Bumblebee",
         model: "anthropic/claude-opus-4-6",
         skills: ["code-quality"],
-        workspace: "~/.openclaw/workspace"
+        workspace: "~/.openclaw/workspace/auto-fix-agent"
       }
     ]
   },
@@ -37,9 +40,14 @@
   channels: {
     telegram: {
       enabled: true,
-      dmPolicy: "allowlist",
-      allowFrom: ["6437545150"],
-      groupPolicy: "disabled"
+      accounts: {
+        bumblebee: {
+          // botToken: "SET_IN_DEPLOYED_CONFIG",
+          dmPolicy: "allowlist",
+          allowFrom: ["6437545150"],
+          groupPolicy: "disabled"
+        }
+      }
     }
   },
 
@@ -58,15 +66,23 @@
 
   hooks: {
     enabled: true,
+    // token: "SET_IN_DEPLOYED_CONFIG",
     mappings: [
       {
         match: { path: "github" },
         action: "agent",
-        agentId: "code-quality",
+        agentId: "autofix",
         deliver: true
       }
     ]
   },
+
+  bindings: [
+    {
+      agentId: "autofix",
+      match: { channel: "telegram", accountId: "bumblebee" }
+    }
+  ],
 
   cron: {
     enabled: true,

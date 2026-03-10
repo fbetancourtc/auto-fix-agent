@@ -37,12 +37,11 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 
 ### Active
 
-- [ ] Vercel serverless webhook receiver for GitHub events
-- [ ] Sentry integration for operations health, value metrics, safety, and artifact monitoring
-- [ ] Dashboard with operations, value, safety, and artifact panels
 - [ ] `@claude` interactive code review via PR comments
-- [ ] Liftitapp org enrollment (6 repos, pending admin approval)
+- [ ] Liftitapp org enrollment (7 repos, pending admin approval for GitHub App install)
 - [ ] LiftitFinOps/conciliacion-averias secrets configuration
+- [ ] GitHub webhook registration for fbetancourtc, Liftitapp, LiftitFinOps
+- [ ] Sentry dashboard + alert rules deployment (setup scripts ready, need env vars)
 
 ### Out of Scope
 
@@ -54,30 +53,35 @@ When CI fails on any monitored repo, an AI agent automatically analyzes the fail
 - Automated rollback — requires context agent doesn't have
 - Slack/Teams notifications — GitHub PR notifications suffice
 
-## Current Milestone: v1.2 Monitoring & Observability
+## Completed Milestones
 
-**Goal:** Add monitoring and observability to the auto-fix pipeline via Sentry + Vercel webhook receiver, providing visibility into operations health, value metrics, safety signals, and artifact status.
+- **v1.0 MVP** — shipped 2026-03-02
+- **v1.1 Multi-Repo Rollout** — shipped 2026-03-03
+- **v1.2 Monitoring & Observability** — shipped 2026-03-10
 
-**Target features:**
-- Vercel serverless function (`/api/webhook.ts`) receiving GitHub webhook events (workflow_run, pull_request, pull_request_review)
-- Sentry integration: Transactions (per run), Custom Events, Cron Monitors (per repo), Alerts, Dashboards
-- Operations health: trigger frequency, fix outcomes (success/fail/escalation), repo health scores
-- Value metrics: PR acceptance rate, mean-time-to-fix (MTTR), cost per fix
-- Safety monitoring: budget burn rate, scope violations, failure pattern detection
-- Artifact monitoring: caller deployment status, PR lifecycle tracking, promotion pipeline health
+### v1.2 Delivered
+
+- Vercel serverless function (`/api/webhook.ts`) receiving GitHub webhook events
+- Event routing + filtering (workflow_run.completed, auto-fix PRs, reviews on auto-fix PRs)
+- Sentry custom metrics: trigger count, outcomes, run duration, MTTR, cost per fix, monthly spend, safety signals
+- Redis-backed deduplication (Upstash, fail-open)
+- Per-repo cron monitors via captureCheckIn (7-day silence detection)
+- Setup scripts for Sentry dashboard (12 widgets) and alert rules (4 thresholds)
+- Full CI pipeline: lint/test/security on push, preview deploys on PR, production deploy on main
+- Promotion workflows: develop→qa (auto), qa→main (human gate)
 
 **Architecture:**
 - GitHub Webhooks → Vercel Serverless Function → Sentry
-- Receiver lives in this repo (auto-fix-agent) as a Vercel function
-- User has existing Sentry account
+- GitHub Actions CI → Vercel Deploy (auto on main)
+- Webhook receiver doubles as central event hub for future integrations
 
 ## Context
 
-Shipped v1.1 with ~1,973 LOC across YAML, Shell, JSON, and Markdown.
-Tech stack: GitHub Actions, Claude Code Action, Bash scripts, JSON config.
+Shipped v1.2 with ~5,500 LOC across TypeScript, YAML, Shell, JSON, and Markdown.
+Tech stack: GitHub Actions, Claude Code Action, Vercel Serverless, Sentry, Upstash Redis, Bash scripts, JSON config.
 GitHub App (ID: 2985828) installed on fbetancourtc and LiftitFinOps; Liftitapp pending admin.
-14 active repos across 3 orgs (10 TypeScript, 4 Python, 1 Kotlin monorepo).
-Audit found 4 non-critical tech debt items — all mitigated.
+15 active repos across 3 orgs (10 TypeScript, 4 Python, 1 Kotlin monorepo).
+83 unit tests across 8 test files. CI pipeline with lint/test/security/deploy.
 
 ## Key Decisions
 
@@ -102,4 +106,4 @@ Audit found 4 non-critical tech debt items — all mitigated.
 - **Rate limits**: GitHub API (5000 req/hr) and Anthropic API limits
 
 ---
-*Last updated: 2026-03-03 after starting v1.2 milestone*
+*Last updated: 2026-03-10 after shipping v1.2 milestone*

@@ -45,7 +45,7 @@ Every plan uses XML tasks. This format is non-negotiable for complex interventio
 | Attribute | Required | Values | Description |
 |-----------|----------|--------|-------------|
 | `id` | Yes | Sequential number | Execution order |
-| `type` | Yes | `auto` | Always auto for CodeQual |
+| `type` | Yes | `auto` | Always auto for Bumblebee |
 | `depends` | No | Task ID | Must complete before this task starts |
 
 ### Task Elements
