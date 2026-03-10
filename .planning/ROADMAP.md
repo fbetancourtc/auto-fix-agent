@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-2.2 (shipped 2026-03-02) — [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v1.1 Multi-Repo Rollout & Observability** — Phases 3-4 (shipped 2026-03-03) — [archive](milestones/v1.1-ROADMAP.md)
-- 🚧 **v1.2 Monitoring & Observability** — Phases 5-7 (in progress)
+- ✅ **v1.2 Monitoring & Observability** — Phases 5-7 (shipped 2026-03-10)
 
 ## Phases
 
@@ -26,12 +26,12 @@
 
 </details>
 
-### 🚧 v1.2 Monitoring & Observability (In Progress)
+### ✅ v1.2 Monitoring & Observability — SHIPPED 2026-03-10
 
 **Milestone Goal:** Add real-time visibility into the auto-fix pipeline via a Vercel webhook receiver feeding Sentry dashboards, cron monitors, and alert rules.
 
 - [x] **Phase 5: Webhook Receiver and Security Foundation** — Deployed, secure Vercel function receiving GitHub webhooks with Sentry error capture (completed 2026-03-06)
-- [ ] **Phase 6: Event Processing, Metrics, and Deduplication** — Full telemetry emission for operations health, value metrics, and safety signals with deduplication
+- [x] **Phase 6: Event Processing, Metrics, and Deduplication** — Full telemetry emission for operations health, value metrics, and safety signals with deduplication (completed 2026-03-10)
 - [x] **Phase 7: Dashboard, Cron Monitors, and Alert Rules** — Sentry dashboard panels, per-repo silence detection, and proactive alerting (completed 2026-03-10)
 
 ## Phase Details
@@ -80,8 +80,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 07-01-PLAN.md — Cron monitor heartbeat module with per-repo silence detection via captureCheckIn
-- [ ] 07-02-PLAN.md — Sentry dashboard setup scripts, alert rule configuration, and deployment verification
+- [x] 07-01-PLAN.md — Cron monitor heartbeat module with per-repo silence detection via captureCheckIn
+- [x] 07-02-PLAN.md — Sentry dashboard setup scripts, alert rule configuration, and deployment verification
 
 ## Progress
 
@@ -98,4 +98,4 @@ Phases execute in numeric order: 5 → 6 → 7
 | 4. Promotion and Observability | v1.1 | 3/3 | Complete | 2026-03-03 |
 | 5. Webhook Receiver and Security Foundation | v1.2 | 2/2 | Complete | 2026-03-06 |
 | 6. Event Processing, Metrics, and Deduplication | v1.2 | 3/3 | Complete | 2026-03-10 |
-| 7. Dashboard, Cron Monitors, and Alert Rules | 2/2 | Complete   | 2026-03-10 | - |
+| 7. Dashboard, Cron Monitors, and Alert Rules | v1.2 | 2/2 | Complete | 2026-03-10 |
