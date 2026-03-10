@@ -1,0 +1,39 @@
+{
+  "defaults": {
+    "typescript": {
+      "allowed_dirs": ["src/", "api/", "app/", "components/", "lib/", "utils/", "hooks/", "types/", "tests/", "__tests__/"],
+      "test_cmd": "npx vitest run --reporter=verbose",
+      "lint_cmd": "npx eslint .",
+      "lint_fix_cmd": "npx eslint --fix .",
+      "type_cmd": "npx tsc --noEmit",
+      "build_cmd": "npm run build",
+      "coverage_cmd": "npx vitest run --coverage"
+    },
+    "python": {
+      "allowed_dirs": ["src/", "app/", "lib/", "tests/"],
+      "test_cmd": "pytest -x -v",
+      "lint_cmd": "ruff check .",
+      "lint_fix_cmd": "ruff check --fix .",
+      "type_cmd": "mypy .",
+      "format_cmd": "ruff format .",
+      "coverage_cmd": "pytest --cov --cov-report=term-missing"
+    },
+    "kotlin": {
+      "allowed_dirs": ["app/src/"],
+      "test_cmd": "./gradlew test",
+      "lint_cmd": "./gradlew ktlintCheck",
+      "lint_fix_cmd": "./gradlew ktlintFormat",
+      "build_cmd": "./gradlew build"
+    }
+  },
+  "repos": {
+    "fbetancourtc/auto-fix-agent": {
+      "stack": "typescript",
+      "default_branch": "main",
+      "allowed_dirs": ["api/", "scripts/", "tests/", "config/", "prompts/"],
+      "test_cmd": "npx vitest run --reporter=verbose",
+      "lint_cmd": "npx tsc --noEmit",
+      "notes": "Seed repo — the agent monitors itself. TypeScript serverless functions + shell scripts."
+    }
+  }
+}

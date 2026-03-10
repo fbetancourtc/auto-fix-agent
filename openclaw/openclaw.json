@@ -1,0 +1,99 @@
+{
+  // OpenClaw Configuration — Code Quality Agent
+  // Format: JSON5 (comments and trailing commas OK)
+  // Deploy to: ~/.openclaw/openclaw.json
+
+  gateway: {
+    mode: "local",
+    port: 18789,
+    bind: "loopback",
+    auth: { mode: "token" },
+    reload: { mode: "hybrid" }
+  },
+
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace",
+      model: "anthropic/claude-opus-4-6",
+      sandbox: { mode: "non-main" },
+      heartbeat: {
+        every: "10m",
+        target: "telegram"
+      },
+      blockStreamingBreak: "text_end"
+    },
+    list: [
+      {
+        id: "code-quality",
+        name: "CodeQual",
+        default: true,
+        model: "anthropic/claude-opus-4-6",
+        instructions: "You are CodeQual, a fully autonomous Code Quality Agent. You monitor enrolled GitHub repositories for CI failures, linting violations, test failures, coverage gaps, and SOLID/DDD principle violations. You fix issues by creating PRs. You always verify fixes before committing. You escalate after 2 failed attempts. Read AGENTS.md for full operating instructions.",
+        skills: ["code-quality"],
+        workspace: "~/.openclaw/workspace",
+        maxConcurrent: 2,
+        subagents: { maxConcurrent: 4 }
+      }
+    ]
+  },
+
+  channels: {
+    telegram: {
+      enabled: true,
+      // Bot token set via TELEGRAM_BOT_TOKEN in .env
+      dmPolicy: "allowlist",
+      groupPolicy: "blocked"
+    }
+  },
+
+  models: {
+    default: "anthropic/claude-opus-4-6",
+    providers: {
+      anthropic: {
+        authMode: "token"
+        // Uses ANTHROPIC_API_KEY from .env or Claude Max subscription token
+      }
+    }
+  },
+
+  tools: {
+    policy: "allow",
+    browser: {
+      headless: true
+    }
+  },
+
+  hooks: {
+    enabled: true,
+    // GitHub webhook ingestion — activate after exposing gateway via Tailscale funnel
+    // or ngrok. For now, cron-based polling is the primary trigger.
+    mappings: [
+      {
+        match: { path: "github" },
+        action: "agent",
+        agentId: "code-quality",
+        deliver: true
+      }
+    ]
+  },
+
+  cron: {
+    enabled: true,
+    maxConcurrentRuns: 1,
+    sessionRetention: "48h",
+    runLog: {
+      maxBytes: "2mb",
+      keepLines: 2000
+    }
+  },
+
+  session: {
+    scope: "per-channel-peer",
+    resetPolicy: "on-new-day"
+  },
+
+  memory: {
+    backend: "builtin",
+    citations: "auto"
+  }
+}
