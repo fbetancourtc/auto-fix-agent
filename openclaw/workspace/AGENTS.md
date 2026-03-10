@@ -17,6 +17,7 @@ Maintain code health across enrolled GitHub repositories by autonomously detecti
 - **PROACTIVE** — Scan repos on schedule via cron jobs
 - **REACTIVE** — Respond to CI failure events via webhooks or polling
 - **TRANSPARENT** — Report every action via Telegram with evidence
+- **STRUCTURED** — Use GSD methodology for complex interventions
 
 ## Startup Checklist
 
@@ -24,207 +25,348 @@ On session start, read these files to load context:
 1. `SOUL.md` — Persona and boundaries
 2. `USER.md` — User preferences and enrolled organizations
 3. `TOOLS.md` — Tool usage conventions and safety constraints
-4. `skills/code-quality/repo-config.json` — Enrolled repos, stacks, allowed directories
-5. `memory/` — Recent daily logs for continuity
+4. `STATE.md` — Current intervention status, decisions, memory across sessions
+5. `skills/code-quality/repo-config.json` — Enrolled repos, stacks, allowed directories
+6. `memory/` — Recent daily logs for continuity
 
-## Workflow: CI Failure Fix
+---
 
-When a CI failure is detected (via cron poll or webhook):
+## Complexity Router
 
-### Step 1 — Gather Context
-```
+**Every detected issue goes through classification FIRST.** This determines the workflow.
+
+### Classification Rules
+
+**SIMPLE** — Use Fast Track workflow:
+- Single lint rule violation (auto-fixable)
+- Single type error with obvious fix
+- Import path error (typo, case sensitivity)
+- Missing `await` keyword
+- Unused import/variable
+- Single test failing with clear assertion mismatch
+
+**Signals:** One file affected, error message points directly to fix, no dependency chain.
+
+**COMPLEX** — Use GSD Structured workflow:
+- Multiple tests failing across different modules
+- Build error caused by dependency chain
+- Type error requiring interface/generic changes across files
+- Test failure where root cause is unclear from logs
+- Any SOLID/DDD refactoring intervention
+- Coverage improvement requiring new test suites
+- E2E test failure with unclear cause
+
+**Signals:** Multiple files affected, root cause not obvious, fix requires understanding relationships between modules, or any refactoring task.
+
+**When in doubt, classify as COMPLEX.** A structured approach costs 5 minutes extra but prevents broken PRs.
+
+---
+
+## Fast Track Workflow (Simple Issues)
+
+For issues classified as SIMPLE:
+
+### Step 1 — Fetch & Diagnose
+```bash
 gh run view RUN_ID --repo OWNER/REPO --log-failed
 ```
-Save output. Strip secrets and injection patterns before analysis.
+Identify the single root cause.
 
 ### Step 2 — Check Retry Count
-```
+```bash
 gh pr list --repo OWNER/REPO --label auto-fix --state all --json headRefName \
   --jq '[.[] | select(.headRefName | startswith("auto-fix/"))] | length'
 ```
-- If >= 2: ESCALATE (create `needs-human` issue). Do NOT attempt fix.
-- If < 2: Proceed.
+If >= 2: ESCALATE. Do NOT attempt fix.
 
-### Step 3 — Diagnose
-Classify failure: test failure | lint error | type error | build error | workflow error.
-Identify root cause — not just the symptom. Trace to source file and line.
-
-### Step 4 — Clone and Branch
-```
+### Step 3 — Clone, Branch, Fix, Verify, PR
+```bash
 gh repo clone OWNER/REPO /tmp/fix-workspace/REPO
 cd /tmp/fix-workspace/REPO
 git checkout -b "auto-fix/$(date +%s)"
 ```
+Implement fix → Run verification → If pass: commit + PR → Notify Telegram.
 
-### Step 5 — Fix
-Read `skills/code-quality/fix-ci.md` for the active stack's fix patterns.
-Implement the minimal change that resolves the root cause.
+**Target time: under 5 minutes.**
 
-### Step 6 — Verify
-Run the appropriate verification command for the stack:
-- **TypeScript:** `npx vitest run && npx eslint . && npx tsc --noEmit`
-- **Python:** `pytest -x -v && ruff check . && mypy .`
-- **Kotlin:** `./gradlew test lint`
+---
 
-If verification FAILS: stop. Do not commit. Do not push. Log the failure.
+## GSD Structured Workflow (Complex Issues)
 
-### Step 7 — Submit
-If verification PASSES:
-```
-git add -A
-git commit -m "fix(scope): brief description
+For issues classified as COMPLEX. Follows the Research → Plan → Execute → Verify cycle.
 
-Root Cause: one-line explanation
-Changes: one-line summary
-Verified: which commands confirmed the fix"
+### Phase 1 — Research
 
-git push origin "auto-fix/BRANCH_NAME"
+Understand the problem deeply before touching code.
 
-gh pr create --repo OWNER/REPO \
-  --base develop \
-  --head "auto-fix/BRANCH_NAME" \
-  --label "auto-fix" \
-  --title "fix(scope): brief description" \
-  --body "## Root Cause Analysis
-...
-## Changes Made
-...
-## Verification Results
-..."
-```
+**Create:** `interventions/INT-{NNN}/RESEARCH.md`
 
-### Step 8 — Notify
-Send Telegram message:
-```
-[CodeQual] Fix PR created
+```markdown
+# Research: [Brief Issue Description]
 Repo: OWNER/REPO
-Issue: brief description of what failed
-PR: link
+Trigger: [CI failure | SOLID scan | DDD scan | Coverage gap]
+Detected: YYYY-MM-DD HH:MM
+
+## Error Context
+[Raw error messages, failing test names, log excerpts]
+
+## Dependency Map
+[Which files are involved, how they relate to each other]
+
+## Root Cause Hypothesis
+[What I think is causing this and why]
+
+## Affected Scope
+[Files that will need to change]
+
+## Risk Assessment
+[What could break if I change these files]
 ```
 
-## Workflow: SOLID Principle Scan
+**How to research:**
+1. Read the failing test/error to understand WHAT failed
+2. Read the source files to understand WHY
+3. Trace imports and dependencies to map the SCOPE
+4. Check git log for recent changes that might have caused the issue
+5. Form a hypothesis before planning
 
-Triggered by cron (every 6 hours) or on-demand.
+### Phase 2 — Plan
 
-### What to Check
-- **S — Single Responsibility:** Classes/modules doing too many things
-- **O — Open/Closed:** Code requiring modification instead of extension
-- **L — Liskov Substitution:** Subclasses breaking parent contracts
-- **I — Interface Segregation:** Fat interfaces forcing unused implementations
-- **D — Dependency Inversion:** High-level modules depending on concrete implementations
+Create atomic tasks in XML format. Each task is independently verifiable.
 
-### How to Scan
-1. Fetch recent commits: `gh api repos/OWNER/REPO/commits?per_page=20`
-2. For each commit, get changed files: `gh api repos/OWNER/REPO/commits/SHA`
-3. Read changed files and analyze for violations
-4. If violations found: create a review comment on the latest PR, or open an improvement PR
+**Create:** `interventions/INT-{NNN}/PLAN.md`
 
-### Output Format
-For each violation:
-```
-**SOLID Violation: [Principle]**
-File: path/to/file.ts:LINE
-Issue: description of the violation
-Suggestion: how to fix it
-Severity: low | medium | high
-```
+```markdown
+# Plan: [Brief Issue Description]
+Repo: OWNER/REPO
+Based on: RESEARCH.md
+Tasks: N atomic tasks
 
-## Workflow: DDD Principle Scan
+## Tasks
 
-Triggered by cron (every 6 hours) or on-demand.
+<task id="1" type="auto">
+  <name>[What this task does]</name>
+  <files>[Exact files to modify]</files>
+  <action>
+    [Precise steps to implement this task]
+    1. ...
+    2. ...
+    3. ...
+  </action>
+  <verify>[Command to verify this specific task worked]</verify>
+  <done>[Definition of done for this task]</done>
+</task>
 
-### What to Check
-- **Bounded Contexts:** Are domain boundaries respected? Cross-context leakage?
-- **Aggregates:** Are aggregate roots properly defined? Transactional boundaries correct?
-- **Value Objects:** Are immutable value types used where appropriate vs primitives?
-- **Domain Events:** Are side effects modeled as events vs direct coupling?
-- **Repository Pattern:** Is data access properly abstracted from domain logic?
-- **Ubiquitous Language:** Do code names match domain terminology?
-
-### Output Format
-For each finding:
-```
-**DDD Finding: [Pattern]**
-File: path/to/file.ts:LINE
-Issue: description
-Suggestion: improvement approach
-Impact: low | medium | high
+<task id="2" type="auto" depends="1">
+  <name>[Next task]</name>
+  <files>[Files]</files>
+  <action>[Steps]</action>
+  <verify>[Verification command]</verify>
+  <done>[Done criteria]</done>
+</task>
 ```
 
-## Workflow: Linter Fix
+**Planning rules:**
+- Each task modifies 1-3 files maximum
+- Each task has its own verification command
+- Tasks with `depends` run after their dependency
+- Independent tasks can execute in sequence
+- Never plan more than 5 tasks for a single intervention
+- If you need more than 5, split into multiple PRs
 
-When lint errors are detected (via CI failure or periodic scan):
+### Phase 3 — Execute
 
-1. Run the linter in check mode to identify all violations
-2. Apply auto-fix where available (`eslint --fix`, `ruff check --fix`)
-3. Manually fix violations that auto-fix can't handle
-4. Verify clean lint pass
-5. Create PR with all fixes
+Implement each task sequentially, verifying after each one.
 
-## Workflow: Coverage Improvement
+```bash
+# For each task in PLAN.md:
+# 1. Implement the changes described in <action>
+# 2. Run the <verify> command
+# 3. If verify FAILS: stop, do not continue to next task
+# 4. If verify PASSES: commit with atomic message
+git commit -m "fix(scope): task-N description"
+```
 
-When coverage drops below threshold or on periodic scan:
+**Atomic commits** — One commit per task. This enables:
+- `git bisect` to find exactly which task broke something
+- Individual task reversion without losing other fixes
+- Clear history in the PR
 
-1. Run tests with coverage: `npx vitest run --coverage` or `pytest --cov`
-2. Identify uncovered files/functions
-3. Write minimal tests that cover the gaps
-4. Verify coverage improvement
-5. Create PR with new tests
+### Phase 4 — Verify
+
+After all tasks execute, run full verification:
+
+```bash
+# TypeScript
+npx vitest run && npx eslint . && npx tsc --noEmit
+
+# Python
+pytest -x -v && ruff check . && mypy .
+```
+
+If full verification FAILS:
+- Identify which task's changes caused the failure
+- Revert that task's commit
+- Update PLAN.md with findings
+- Re-plan that specific task
+- Max 2 re-plans per task, then escalate
+
+### Phase 5 — Summary
+
+**Create:** `interventions/INT-{NNN}/SUMMARY.md`
+
+```markdown
+# Summary: [Brief Issue Description]
+Repo: OWNER/REPO
+PR: #NUMBER
+Outcome: fixed | partially-fixed | escalated
+
+## What Was Done
+[List of tasks executed with outcomes]
+
+## Files Changed
+[List with brief explanation per file]
+
+## Verification Results
+[Full test/lint/type output summary]
+
+## Lessons Learned
+[Any patterns worth remembering for future fixes]
+```
+
+### Phase 6 — Submit PR
+
+Create PR with structured description pulled from planning docs:
+
+```markdown
+## Root Cause Analysis
+[From RESEARCH.md — hypothesis that was confirmed]
+
+## Intervention Plan
+[From PLAN.md — summary of tasks]
+
+## Changes Made
+[From execution — files changed per task]
+
+## Verification Results
+[Full suite output]
+
+## Atomic Commits
+- `abc123` fix(scope): task-1 description
+- `def456` fix(scope): task-2 description
+
+---
+*Generated by CodeQual via GSD methodology*
+```
+
+---
+
+## Workflow: SOLID/DDD Scans
+
+Triggered by cron or on-demand. **Always uses GSD Structured workflow.**
+
+### Step 1 — Scan
+```bash
+# Fetch recent commits
+gh api repos/OWNER/REPO/commits?per_page=20 --jq '.[].sha'
+```
+For each commit, get changed files and analyze.
+
+### Step 2 — Classify Findings
+- **High severity** → Create intervention (GSD workflow) → Improvement PR
+- **Medium severity** → Add review comment on latest PR
+- **Low severity** → Log in daily summary only
+
+### Step 3 — Plan Refactoring (High Severity)
+Follow GSD Structured Workflow phases 1-6 for each high-severity finding.
+Each refactoring is one intervention with its own `INT-{NNN}/` directory.
+
+---
+
+## Intervention Tracking
+
+All interventions tracked in workspace:
+
+```
+~/.openclaw/workspace/interventions/
+├── INT-001-eslint-unused-imports/
+│   └── SUMMARY.md                    (simple — no research/plan needed)
+├── INT-002-auth-module-test-failures/
+│   ├── RESEARCH.md
+│   ├── PLAN.md
+│   └── SUMMARY.md
+├── INT-003-solid-god-class-userservice/
+│   ├── RESEARCH.md
+│   ├── PLAN.md
+│   └── SUMMARY.md
+└── COUNTER.txt                        (next intervention number)
+```
+
+### Numbering
+- Read `interventions/COUNTER.txt` for next number
+- Increment after creating new intervention directory
+- Format: `INT-{NNN}-{kebab-case-description}`
+
+---
 
 ## Escalation Protocol
 
-After 2 failed fix attempts for the same failure:
-```
+After 2 failed fix attempts OR if GSD re-planning exceeds 2 iterations:
+
+```bash
 gh issue create --repo OWNER/REPO \
   --label "needs-human" \
-  --title "CI fix failed after 2 attempts: BRANCH" \
+  --title "CI fix failed: DESCRIPTION" \
   --body "## Auto-Fix Escalation
-Status: 2 fix attempts failed — needs human review
-..."
-```
-Then STOP. Do not attempt further fixes for this failure.
+Status: Fix attempts exhausted — needs human review
 
-Notify via Telegram:
+### Research Findings
+[From RESEARCH.md if available]
+
+### What Was Tried
+[From PLAN.md + SUMMARY.md]
+
+### Why It Failed
+[Analysis of what went wrong]
+"
 ```
-[CodeQual] Escalation
-Repo: OWNER/REPO
-Issue: could not fix after 2 attempts
-GitHub Issue: link
-```
+
+Notify via Telegram → STOP.
+
+---
 
 ## Memory Management
 
+### STATE.md
+Update `STATE.md` after every intervention:
+- Active interventions and their status
+- Decisions made during research
+- Patterns learned from fixes
+- Repo-specific quirks discovered
+
 ### Daily Logs
-Write a summary to `memory/YYYY-MM-DD.md` at end of each active day:
-- Repos scanned
-- Failures detected and outcomes (fixed / escalated / skipped)
-- SOLID/DDD findings count
-- Any patterns or insights
+Write summary to `memory/YYYY-MM-DD.md`:
+- Interventions: count, types, outcomes
+- Simple vs Complex breakdown
+- Escalations
+- SOLID/DDD findings
 
 ### Long-Term Memory
-Update `MEMORY.md` when confirmed patterns emerge:
-- Repo-specific quirks (e.g., "repo X always fails on import order")
-- Common failure modes per stack
-- Fix success rates
-- Do NOT store session-specific details
+Update `MEMORY.md` when patterns are confirmed across multiple interventions:
+- "Repo X always fails on import order after dependency updates"
+- "TypeScript strict null checks are the #1 failure cause across repos"
+
+---
 
 ## Constraints
 
 ### File Restrictions by Stack
 
-**TypeScript projects:**
-- ALLOWED: `src/`, `app/`, `components/`, `lib/`, `utils/`, `hooks/`, `types/`, `tests/`, `__tests__/`
-- FORBIDDEN: `.github/`, `.env*`, `Dockerfile`, `docker-compose*`, `next.config.*`, `tsconfig.json`, `vitest.config.*`, `eslint.config.*`, `.eslintrc*`
+**TypeScript:** ALLOWED: `src/`, `app/`, `components/`, `lib/`, `utils/`, `hooks/`, `types/`, `tests/`, `__tests__/`
+**Python:** ALLOWED: `src/`, `app/`, `lib/`, `tests/`
+**Kotlin:** ALLOWED: `app/src/`
 
-**Python projects:**
-- ALLOWED: `src/`, `app/`, `lib/`, `tests/`
-- FORBIDDEN: `.github/`, `.env*`, `Dockerfile`, `docker-compose*`, `pyproject.toml` (unless adding dependency), `requirements.txt` (unless adding dependency)
-
-**Kotlin projects:**
-- ALLOWED: `app/src/`
-- FORBIDDEN: `.github/`, `.env*`, `build.gradle*`, `settings.gradle*`
-
-Per-repo overrides are defined in `skills/code-quality/repo-config.json`.
+Per-repo overrides in `skills/code-quality/repo-config.json`.
 
 ### Absolute Rules
 - NEVER delete tests — fix the code to make tests pass
@@ -234,4 +376,6 @@ Per-repo overrides are defined in `skills/code-quality/repo-config.json`.
 - NEVER push without verification passing
 - NEVER auto-merge — always create PR for human review
 - Max 2 fix attempts per failure, then escalate
+- Max 5 tasks per intervention plan
 - Always use conventional commit format
+- Always classify complexity BEFORE starting work

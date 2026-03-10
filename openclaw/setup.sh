@@ -18,13 +18,14 @@ echo "=== CodeQual Agent Setup ==="
 echo ""
 
 # 1. Create directory structure
-echo "[1/6] Creating directory structure..."
+echo "[1/7] Creating directory structure..."
 mkdir -p "$WORKSPACE_DIR/memory"
+mkdir -p "$WORKSPACE_DIR/interventions"
 mkdir -p "$SKILLS_DIR/code-quality"
 mkdir -p "$OPENCLAW_DIR/cron"
 
 # 2. Copy configuration
-echo "[2/6] Deploying configuration..."
+echo "[2/7] Deploying configuration..."
 
 if [ -f "$OPENCLAW_DIR/openclaw.json" ]; then
   echo "  WARNING: Existing openclaw.json found — backing up to openclaw.json.bak"
@@ -33,14 +34,14 @@ fi
 cp "$SCRIPT_DIR/openclaw.json" "$OPENCLAW_DIR/openclaw.json"
 
 # 3. Copy workspace files
-echo "[3/6] Deploying workspace files..."
-for file in AGENTS.md SOUL.md IDENTITY.md TOOLS.md USER.md; do
+echo "[3/7] Deploying workspace files..."
+for file in AGENTS.md SOUL.md IDENTITY.md TOOLS.md USER.md STATE.md; do
   cp "$SCRIPT_DIR/workspace/$file" "$WORKSPACE_DIR/$file"
   echo "  Deployed: $file"
 done
 
 # 4. Copy skills
-echo "[4/6] Deploying code-quality skill..."
+echo "[4/7] Deploying code-quality skill..."
 if [ -d "$SCRIPT_DIR/workspace/skills/code-quality" ]; then
   cp -r "$SCRIPT_DIR/workspace/skills/code-quality/"* "$SKILLS_DIR/code-quality/"
   echo "  Deployed: code-quality skill"
@@ -49,7 +50,17 @@ else
 fi
 
 # 5. Environment file
-echo "[5/6] Checking environment..."
+# 5. Deploy intervention tracking
+echo "[5/7] Setting up intervention tracking..."
+if [ ! -f "$WORKSPACE_DIR/interventions/COUNTER.txt" ]; then
+  cp "$SCRIPT_DIR/workspace/interventions/COUNTER.txt" "$WORKSPACE_DIR/interventions/COUNTER.txt"
+  echo "  Created intervention counter (starting at 1)"
+else
+  echo "  Existing counter found — preserving (currently at $(cat "$WORKSPACE_DIR/interventions/COUNTER.txt" | tr -d '[:space:]'))"
+fi
+
+# 6. Environment file
+echo "[6/7] Checking environment..."
 if [ ! -f "$OPENCLAW_DIR/.env" ]; then
   cp "$SCRIPT_DIR/.env.example" "$OPENCLAW_DIR/.env"
   echo "  Created .env from template — EDIT WITH REAL VALUES:"
@@ -59,7 +70,7 @@ else
 fi
 
 # 6. Create cron jobs
-echo "[6/6] Setting up cron jobs..."
+echo "[7/7] Setting up cron jobs..."
 echo ""
 echo "  Run these commands to create the scheduled jobs:"
 echo ""
