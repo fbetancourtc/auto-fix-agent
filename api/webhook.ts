@@ -16,6 +16,7 @@ import { extractHeaders, type WebhookHeaders } from './lib/types.js';
 import { flushSentry } from './lib/sentry.js';
 import { routeEvent, type WebhookPayload } from './lib/router.js';
 import { isDuplicate } from './lib/dedup.js';
+import { emitRepoHeartbeat } from './lib/monitors.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -87,7 +88,13 @@ async function processEvent(
       return;
     }
 
-    await routeEvent(headers.eventType, payload as WebhookPayload);
+    const result = await routeEvent(headers.eventType, payload as WebhookPayload);
+
+    // SENT-03: Emit cron monitor heartbeat for active repos
+    const repoFullName = (repository?.full_name as string) ?? '';
+    if (result.processed && repoFullName) {
+      emitRepoHeartbeat(repoFullName);
+    }
   } catch (error) {
     Sentry.captureException(error);
   } finally {
