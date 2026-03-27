@@ -47,37 +47,45 @@ DASHBOARD_JSON=$(cat <<'PAYLOAD'
     {
       "title": "Operations Health: Trigger Count by Repo",
       "displayType": "bar",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Triggers",
+          "fields": ["sum(c:custom/auto_fix.trigger_count@none)", "repo"],
           "aggregates": ["sum(c:custom/auto_fix.trigger_count@none)"],
           "columns": ["repo"],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 0, "y": 0, "w": 3, "h": 2, "min_h": 2 }
+      "limit": 10,
+      "layout": { "x": 0, "y": 0, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Operations Health: Outcome Breakdown",
       "displayType": "bar",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Outcomes",
+          "fields": ["sum(c:custom/auto_fix.outcome@none)", "outcome"],
           "aggregates": ["sum(c:custom/auto_fix.outcome@none)"],
           "columns": ["outcome"],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 3, "y": 0, "w": 3, "h": 2, "min_h": 2 }
+      "limit": 10,
+      "layout": { "x": 3, "y": 0, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Operations Health: Run Duration (p50/p95)",
       "displayType": "line",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "p50",
+          "fields": ["p50(d:custom/auto_fix.run_duration_ms@millisecond)"],
           "aggregates": ["p50(d:custom/auto_fix.run_duration_ms@millisecond)"],
           "columns": [],
           "conditions": "",
@@ -85,20 +93,23 @@ DASHBOARD_JSON=$(cat <<'PAYLOAD'
         },
         {
           "name": "p95",
+          "fields": ["p95(d:custom/auto_fix.run_duration_ms@millisecond)"],
           "aggregates": ["p95(d:custom/auto_fix.run_duration_ms@millisecond)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 0, "y": 2, "w": 3, "h": 2, "min_h": 2 }
+      "layout": { "x": 0, "y": 2, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Operations Health: Per-Repo Health",
       "displayType": "table",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Health",
+          "fields": ["sum(c:custom/auto_fix.trigger_count@none)", "sum(c:custom/auto_fix.outcome@none)", "repo"],
           "aggregates": [
             "sum(c:custom/auto_fix.trigger_count@none)",
             "sum(c:custom/auto_fix.outcome@none)"
@@ -108,119 +119,135 @@ DASHBOARD_JSON=$(cat <<'PAYLOAD'
           "orderby": "-sum(c:custom/auto_fix.trigger_count@none)"
         }
       ],
-      "layout": { "x": 3, "y": 2, "w": 3, "h": 2, "min_h": 2 }
+      "layout": { "x": 3, "y": 2, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Value Metrics: MTTR Trend",
       "displayType": "line",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "MTTR p50",
+          "fields": ["p50(d:custom/auto_fix.mttr_ms@millisecond)"],
           "aggregates": ["p50(d:custom/auto_fix.mttr_ms@millisecond)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 0, "y": 4, "w": 3, "h": 2, "min_h": 2 }
+      "layout": { "x": 0, "y": 4, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Value Metrics: Cost per Fix",
       "displayType": "line",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Avg Cost",
+          "fields": ["avg(d:custom/auto_fix.cost_per_fix_usd@none)"],
           "aggregates": ["avg(d:custom/auto_fix.cost_per_fix_usd@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 3, "y": 4, "w": 3, "h": 2, "min_h": 2 }
+      "layout": { "x": 3, "y": 4, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Value Metrics: Monthly Spend",
       "displayType": "big_number",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Spend",
+          "fields": ["sum(g:custom/auto_fix.monthly_spend_usd@none)"],
           "aggregates": ["sum(g:custom/auto_fix.monthly_spend_usd@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 0, "y": 6, "w": 2, "h": 1, "min_h": 1 }
+      "layout": { "x": 0, "y": 6, "w": 2, "h": 1, "minH": 1 }
     },
     {
       "title": "Value Metrics: PR Acceptance Rate",
       "displayType": "big_number",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Accepted",
+          "fields": ["sum(c:custom/auto_fix.pr_accepted@none)"],
           "aggregates": ["sum(c:custom/auto_fix.pr_accepted@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 2, "y": 6, "w": 2, "h": 1, "min_h": 1 }
+      "layout": { "x": 2, "y": 6, "w": 2, "h": 1, "minH": 1 }
     },
     {
       "title": "Safety Signals: Budget Burn Rate",
       "displayType": "line",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Spend",
+          "fields": ["sum(g:custom/auto_fix.monthly_spend_usd@none)"],
           "aggregates": ["sum(g:custom/auto_fix.monthly_spend_usd@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 0, "y": 7, "w": 3, "h": 2, "min_h": 2 }
+      "layout": { "x": 0, "y": 7, "w": 3, "h": 2, "minH": 2 }
     },
     {
       "title": "Safety Signals: Circuit Breaker Trips",
       "displayType": "big_number",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Trips",
+          "fields": ["sum(c:custom/auto_fix.safety.circuit_breaker_trip@none)"],
           "aggregates": ["sum(c:custom/auto_fix.safety.circuit_breaker_trip@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 3, "y": 7, "w": 1, "h": 1, "min_h": 1 }
+      "layout": { "x": 3, "y": 7, "w": 1, "h": 1, "minH": 1 }
     },
     {
       "title": "Safety Signals: Scope Violations",
       "displayType": "big_number",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Violations",
+          "fields": ["sum(c:custom/auto_fix.safety.scope_violation@none)"],
           "aggregates": ["sum(c:custom/auto_fix.safety.scope_violation@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 4, "y": 7, "w": 1, "h": 1, "min_h": 1 }
+      "layout": { "x": 4, "y": 7, "w": 1, "h": 1, "minH": 1 }
     },
     {
       "title": "Safety Signals: Escalations",
       "displayType": "big_number",
+      "widgetType": "metrics",
       "queries": [
         {
           "name": "Escalations",
+          "fields": ["sum(c:custom/auto_fix.safety.escalation@none)"],
           "aggregates": ["sum(c:custom/auto_fix.safety.escalation@none)"],
           "columns": [],
           "conditions": "",
           "orderby": ""
         }
       ],
-      "layout": { "x": 5, "y": 7, "w": 1, "h": 1, "min_h": 1 }
+      "layout": { "x": 5, "y": 7, "w": 1, "h": 1, "minH": 1 }
     }
   ]
 }
