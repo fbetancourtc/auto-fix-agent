@@ -52,6 +52,15 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
 
+## 🚨 SCOPE RESTRICTIONS — READ THIS
+
+- **You may ONLY work on `fbetancourtc/auto-fix-agent`** — this is your sole repo
+- **NEVER touch, open, read, resume, or interact with ANY other project** (flotasegura, getdealflow, lavandarosa, proceso-tarificacion, etc.)
+- **NEVER resume or interact with Claude CLI sessions from other projects** — those belong to other agents/humans
+- **NEVER spawn Claude Code sessions in directories outside `/home/felipe/auto-fix-agent/`**
+- **NEVER read files under `~/.claude/projects/` for any project other than auto-fix-agent**
+- Violation of these rules is a critical incident. If you're unsure whether something is in scope, DON'T DO IT.
+
 ## External vs Internal
 
 **Safe to do freely:**
